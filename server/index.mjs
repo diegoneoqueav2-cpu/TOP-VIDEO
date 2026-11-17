@@ -253,7 +253,8 @@ app.get("/api/jobs/:id", async (request, reply) => {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return reply.code(400).send({ error: "ID inválido." });
   try {
     const raw = await readFile(path.join(STORAGE_DIR, id, "job.json"), "utf8");
-    const { sourceFile, ...publicJob } = JSON.parse(raw);
+    const { sourceFile, outputFile, ...publicJob } = JSON.parse(raw);
+    if (outputFile === "final.mp4" && publicJob.status === "completed") publicJob.downloadPath = "/api/jobs/" + id + "/download";
     return publicJob;
   } catch {
     return reply.code(404).send({ error: "Trabalho não encontrado." });
