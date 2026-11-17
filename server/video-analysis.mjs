@@ -4,6 +4,7 @@ import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import Ajv2020 from "ajv/dist/2020.js";
+import { TOP_VIDEO_EDITOR_PROFILE } from "./editor-profile.mjs";
 
 const exec = promisify(execFile);
 const MAX_AUDIO_BYTES = 24 * 1024 * 1024;
@@ -105,7 +106,7 @@ export async function analyzeVideo({ sourcePath, instruction, aspectRatio, schem
     }
 
     const schema = JSON.parse(await readFile(schemaPath, "utf8"));
-    const prompt = `Você é o diretor audiovisual e editor-chefe do TOP VIDEO. Sua tarefa é ENTENDER o vídeo antes de sugerir qualquer edição.
+    const prompt = `${TOP_VIDEO_EDITOR_PROFILE.userTemplate}\n\nVocê deve ENTENDER o vídeo antes de sugerir qualquer edição.
 
 MODO: HÍBRIDO. Preserve a filmagem original e proponha inserções de ilustrações, imagens e motion graphics somente quando agregarem clareza ou impacto. Não substitua a cena original sem motivo.
 
@@ -185,7 +186,7 @@ LIMITES DO JSON:
         temperature: 0.1,
         response_format: { type: "json_object" },
         messages: [
-          { role: "system", content: "Você é um sistema de análise audiovisual. Responda com JSON válido, sem inventar observações e respeitando rigorosamente os limites temporais." },
+          { role: "system", content: TOP_VIDEO_EDITOR_PROFILE.system + "\\n\\nResponda com JSON válido, sem inventar observações e respeitando rigorosamente os limites temporais." },
           { role: "user", content }
         ]
       })
