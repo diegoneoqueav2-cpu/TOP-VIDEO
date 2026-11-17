@@ -322,7 +322,7 @@ app.get("/api/jobs/:id/file-response", async (request, reply) => {
     const expires = Math.floor(Date.now() / 1000) + SIGNED_FILE_TTL_SECONDS;
     const signature = createHmac("sha256", TOKEN).update(id + ":" + expires).digest("hex");
     const url = PUBLIC_URL + "/api/jobs/" + id + "/file?expires=" + expires + "&signature=" + signature;
-    return { openaiFileResponse: [url] };
+    return { downloadUrl: url, expiresAt: new Date(expires * 1000).toISOString(), fileName: "TOP-VIDEO-final.mp4", mimeType: "video/mp4" };
   } catch { return reply.code(404).send({ error: "Trabalho não encontrado." }); }
 });
 
