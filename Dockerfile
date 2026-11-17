@@ -18,16 +18,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libcairo2 \
     libdbus-1-3 \
     libdrm2 \
+    libglib2.0-0 \
+    libgtk-3-0 \
     libgbm1 \
+    libcups2 \
+    libnspr4 \
     libnss3 \
     libpango-1.0-0 \
     libx11-xcb1 \
     libxcb-dri3-0 \
     libxcomposite1 \
     libxdamage1 \
+    libxext6 \
     libxfixes3 \
     libxkbcommon0 \
     libxrandr2 \
+    libxrender1 \
     libxshmfence1 \
     libxss1 \
     libxtst6 \
