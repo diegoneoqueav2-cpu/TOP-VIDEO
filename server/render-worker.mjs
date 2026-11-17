@@ -2,9 +2,13 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { access, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { copyFile } from "node:fs/promises";
+import { bundle } from "@remotion/bundler";
+import { renderMedia, selectComposition } from "@remotion/renderer";
 
 const exec = promisify(execFile);
 const OUTPUTS = { "9:16": [1080, 1920], "16:9": [1920, 1080], "1:1": [1080, 1080] };
+let serveUrlPromise;
 
 async function run(command, args, timeout = 30 * 60 * 1000) {
   try { return await exec(command, args, { timeout, maxBuffer: 16 * 1024 * 1024 }); }
@@ -81,7 +85,6 @@ export async function renderApprovedPlan({ sourcePath, outputPath, jobDir, plan 
   const hasAudio = probe.streams?.some((stream) => stream.codec_type === "audio");
   const [width, height] = OUTPUTS[plan.aspectRatio] || OUTPUTS["9:16"];
   const fps = [24, 25, 30, 60].includes(plan.fps) ? plan.fps : 30;
-  const font = escapePath(await findFont());
   const filters = [];
   const videoInputs = [];
   const audioInputs = [];
@@ -104,52 +107,55 @@ export async function renderApprovedPlan({ sourcePath, outputPath, jobDir, plan 
     filters.push(concatInputs + "concat=n=" + segments.length + ":v=1:a=" + (hasAudio ? 1 : 0) + "[vjoined]" + (hasAudio ? "[ajoined]" : ""));
   }
   filters.push("[vjoined]scale=" + width + ":" + height + ":force_original_aspect_ratio=increase,crop=" + width + ":" + height + ",setsar=1,fps=" + fps + "[vscaled]");
+  filters.push("[vscaled]format=yuv420p[vout]");
+  if (hasAudio && plan.audio?.noiseReduction) filters.push("[ajoined]afftdn=nf=-25[aout]");
 
-  let current = "vscaled";
-  let overlayIndex = 0;
-  const items = [
-    ...plan.captions.map((item) => ({ ...item, overlayType: "caption" })),
-    ...plan.graphics.map((item) => ({ ...item, overlayType: "graphic" }))
-  ];
-  for (const item of items) {
-    const windows = overlayWindows(item, segments);
-    if (!windows.length || !String(item.text || "").trim()) continue;
-    const textFile = path.join(jobDir, "overlay-" + overlayIndex + ".txt");
-    await writeFile(textFile, String(item.text).replace(/\r/g, "").slice(0, 180), { mode: 0o600 });
-    const next = "vlay" + overlayIndex;
-    const position = item.position || "bottom";
-    const y = position === "top" ? "h*0.12" : position === "center" ? "(h-text_h)/2" : "h*0.80-text_h";
-    const isCaption = item.overlayType === "caption";
-    const color = item.style === "green" ? "#8BE0A5" : item.style === "white_yellow" ? "#FFD84D" : "white";
-    const size = Math.round(width * (isCaption ? 0.047 : item.kind === "title" ? 0.064 : 0.043));
-    const draws = windows.map((window) => {
-      const start = fmt(window.start);
-      const end = fmt(window.end);
-      const alpha = "if(lt(t," + start + "+0.18),(t-" + start + ")/0.18,if(gt(t," + end + "-0.18),(" + end + "-t)/0.18,1))";
-      return "drawtext=fontfile='" + font + "':textfile='" + escapePath(textFile) + "':reload=0:expansion=none:fontcolor=" + color + ":fontsize=" + size + ":x=(w-text_w)/2:y=" + y + ":box=1:boxcolor=black@0.48:boxborderw=" + Math.round(width * 0.025) + ":alpha='" + alpha + "':enable='between(t," + start + "," + end + ")'";
-    });
-    filters.push("[" + current + "]" + draws.join(",") + "[" + next + "]");
-    current = next;
-    overlayIndex++;
-  }
-  filters.push("[" + current + "]format=yuv420p[vout]");
-  if (hasAudio) {
-    if (plan.audio?.noiseReduction) filters.push("[ajoined]afftdn=nf=-25[aout]");
-  }
   const filterPath = path.join(jobDir, "render-filter.txt");
-  await writeFile(filterPath, filters.join(";\n"), { mode: 0o600 });
+  const intermediatePath = path.join(jobDir, "intermediate.mp4");
+  await writeFile(filterPath, filters.join(";\\n"), { mode: 0o600 });
   const args = ["-y", "-i", sourcePath, "-filter_complex_script", filterPath, "-map", "[vout]"];
   if (hasAudio) args.push("-map", plan.audio?.noiseReduction ? "[aout]" : "[ajoined]");
   args.push("-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-r", String(fps), "-pix_fmt", "yuv420p");
   if (hasAudio) args.push("-c:a", "aac", "-b:a", "160k");
-  args.push("-movflags", "+faststart", "-t", fmt(totalDuration), outputPath);
+  args.push("-movflags", "+faststart", "-t", fmt(totalDuration), intermediatePath);
   await mkdir(path.dirname(outputPath), { recursive: true });
   await run("ffmpeg", args);
+
+  // The trimmed video becomes a private Remotion static asset for this job.
+  await copyFile(intermediatePath, path.join(jobDir, "intermediate.mp4"));
+  const captions = plan.captions.flatMap((item) =>
+    overlayWindows(item, segments).map((window) => ({ ...item, startSeconds: window.start, endSeconds: window.end }))
+  );
+  const graphics = plan.graphics.flatMap((item) =>
+    overlayWindows(item, segments).map((window) => ({ ...item, startSeconds: window.start, endSeconds: window.end }))
+  );
+  const durationInFrames = Math.max(1, Math.ceil(totalDuration * fps));
+  if (!serveUrlPromise) serveUrlPromise = bundle({ entryPoint: path.resolve("src/index.ts") });
+  const serveUrl = await serveUrlPromise;
+  const inputProps = { durationInFrames, fps, width, height, captions, graphics };
+  const composition = await selectComposition({
+    serveUrl,
+    id: "EditedVideo",
+    inputProps,
+    publicDir: jobDir
+  });
+  await renderMedia({
+    composition,
+    serveUrl,
+    codec: "h264",
+    outputLocation: outputPath,
+    inputProps,
+    publicDir: jobDir,
+    pixelFormat: "yuv420p",
+    crf: 20,
+    concurrency: 2
+  });
   return {
     durationSeconds: Number(totalDuration.toFixed(2)), width, height, fps,
-    keptSegments: segments.length, captionsRendered: plan.captions.length, graphicsRendered: plan.graphics.length,
+    keptSegments: segments.length, captionsRendered: captions.length, graphicsRendered: graphics.length,
+    renderer: "Remotion + FFmpeg",
     warnings: [
-      ...(plan.assetSuggestions?.length ? ["Assets sugeridos (imagens, ilustrações e 3D) ainda não são gerados automaticamente nesta versão."] : []),
+      ...(plan.assetSuggestions?.length ? ["Assets sugeridos (imagens, ilustrações e 3D) ainda não são gerados automaticamente nesta versão; esta versão aplica títulos e gráficos textuais."] : []),
       ...(plan.audio?.music && plan.audio.music !== "none" ? ["Trilha musical separada ainda não é adicionada nesta versão."] : [])
     ]
   };
