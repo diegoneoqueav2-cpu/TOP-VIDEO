@@ -52,7 +52,7 @@ export const Root: React.FC = () => {
           captions: [],
           graphics: [],
         }}
-        calculateMetadata={({ props }: { props: EditedVideoProps }) => ({
+        calculateMetadata={({ props }) => ({
           durationInFrames: props.durationInFrames,
           fps: props.fps,
           width: props.width,
