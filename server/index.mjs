@@ -32,14 +32,15 @@ function authorized(request) {
 }
 
 function validSignedFileRequest(request) {
-  const match = request.url.match(/^\/api\/jobs\/([0-9a-f-]{36})\/file\?(.+)$/i);
-  if (!match) return false;
-  const params = new URLSearchParams(match[2]);
-  const expires = Number(params.get("expires"));
-  const signature = params.get("signature") || "";
+  const parsed = new URL(request.url, "http://localhost");
+  const segments = parsed.pathname.split("/");
+  const id = segments[3];
+  if (segments.length !== 5 || segments[1] !== "api" || segments[2] !== "jobs" || segments[4] !== "file" || !/^[0-9a-f-]{36}$/i.test(id || "")) return false;
+  const expires = Number(parsed.searchParams.get("expires"));
+  const signature = parsed.searchParams.get("signature") || "";
   const now = Math.floor(Date.now() / 1000);
   if (!Number.isInteger(expires) || expires <= now || expires > now + SIGNED_FILE_TTL_SECONDS + 60) return false;
-  const expected = createHmac("sha256", TOKEN).update(match[1] + ":" + expires).digest("hex");
+  const expected = createHmac("sha256", TOKEN).update(id + ":" + expires).digest("hex");
   const a = Buffer.from(signature, "hex");
   const b = Buffer.from(expected, "hex");
   return a.length === b.length && timingSafeEqual(a, b);
