@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { mkdtemp, stat, readFile, rm } from "node:fs/promises";
+import { mkdtemp, stat, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { renderApprovedPlan } from "../server/render-worker.mjs";
