@@ -2,6 +2,16 @@ import React from "react";
 import { Composition } from "remotion";
 import { VideoComposition } from "./VideoComposition";
 import { MotionDemo } from "./MotionDemo";
+import { EditedVideo } from "./EditedVideo";
+
+type EditedVideoProps = {
+  durationInFrames: number;
+  fps: number;
+  width: number;
+  height: number;
+  captions: Array<{ text: string; startSeconds: number; endSeconds: number; style?: "white" | "white_yellow" | "green"; position?: "top" | "center" | "bottom" }>;
+  graphics: Array<{ text: string; startSeconds: number; endSeconds: number; style?: "white" | "white_yellow" | "green"; position?: "top" | "center" | "bottom"; kind?: string }>;
+};
 
 export const Root: React.FC = () => {
   return (
@@ -26,6 +36,28 @@ export const Root: React.FC = () => {
         fps={30}
         width={1080}
         height={1920}
+      />
+      <Composition
+        id="EditedVideo"
+        component={EditedVideo}
+        durationInFrames={900}
+        fps={30}
+        width={1080}
+        height={1920}
+        defaultProps={{
+          durationInFrames: 900,
+          fps: 30,
+          width: 1080,
+          height: 1920,
+          captions: [],
+          graphics: [],
+        }}
+        calculateMetadata={({ props }: { props: EditedVideoProps }) => ({
+          durationInFrames: props.durationInFrames,
+          fps: props.fps,
+          width: props.width,
+          height: props.height,
+        })}
       />
     </>
   );
