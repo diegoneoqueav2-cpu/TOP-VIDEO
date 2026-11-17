@@ -131,7 +131,13 @@ Esta é uma versão inicial do executor, não um editor profissional completo ai
 
 A aprovação inicia o render em segundo plano no próprio processo Node. Se o servidor reiniciar durante o trabalho, não existe fila persistente para recuperar automaticamente o render. Para uso real, o servidor precisa ter Node.js, FFmpeg, FFprobe, dependências do Remotion/Chromium e armazenamento persistente. A integração foi adicionada ao código, mas ainda precisa passar por um teste de renderização real em servidor com vídeo válido. O armazenamento atual continua local; não exponha o servidor à internet sem autenticação por usuário, limites, expiração e armazenamento privado.
 
-### Testes
+### Integração conversacional com GPT
+
+O repositório inclui `openapi.gpt-actions.yaml` e `GPT-ACTION-SETUP.md` para configurar uma Action de GPT personalizado. O fluxo permite anexar um vídeo à conversa, enviar a referência de arquivo ao serviço, analisar, revisar o plano por novos comandos, aguardar aprovação, acompanhar a renderização e devolver o MP4 usando `openaiFileResponse`.
+
+A API aceita upload multipart para clientes web e JSON com `openaiFileIdRefs` para GPT Actions. Configure `TOP_VIDEO_PUBLIC_URL` com o endereço HTTPS público do servidor para gerar o link assinado temporário usado na entrega do MP4. A Action ainda não pode ser ativada até que o backend esteja publicado e o domínio real seja colocado no OpenAPI.
+
+## Testes
 
 Execute `npm test` para os testes unitários da linha do tempo. Execute `npm run test:render` em um ambiente com FFmpeg e Chromium para renderizar um vídeo sintético de ponta a ponta. O workflow do GitHub Actions executa ambos, além das verificações da API. O teste sintético não usa uma chave da OpenAI nem substitui um teste com vídeo real enviado por usuário.
 
