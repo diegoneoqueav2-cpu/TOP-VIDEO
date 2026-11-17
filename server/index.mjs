@@ -11,7 +11,7 @@ const HOST = process.env.HOST || "0.0.0.0";
 const TOKEN = process.env.TOP_VIDEO_API_TOKEN || "";
 const STORAGE_DIR = path.resolve(process.env.TOP_VIDEO_STORAGE || "./storage/jobs");
 const MAX_FILE_BYTES = 100 * 1024 * 1024;
-const PUBLIC_URL = (process.env.TOP_VIDEO_PUBLIC_URL || "").replace(/\\/$/, "");
+const PUBLIC_URL = (process.env.TOP_VIDEO_PUBLIC_URL || "").replace(/\/$/, "");
 const SIGNED_FILE_TTL_SECONDS = 10 * 60;
 
 if (!TOKEN || TOKEN.length < 24) {
@@ -32,7 +32,7 @@ function authorized(request) {
 }
 
 function validSignedFileRequest(request) {
-  const match = request.url.match(/^\\/api\\/jobs\\/([0-9a-f-]{36})\\/file\\?(.+)$/i);
+  const match = request.url.match(/^\/api\/jobs\/([0-9a-f-]{36})\/file\?(.+)$/i);
   if (!match) return false;
   const params = new URLSearchParams(match[2]);
   const expires = Number(params.get("expires"));
@@ -216,7 +216,6 @@ app.post("/api/jobs/:id/command", async (request, reply) => {
   try {
     const { analyzeVideo } = await import("./video-analysis.mjs");
     const commandHistory = [...(job.commandHistory || []), { instruction: command, createdAt: new Date().toISOString() }].slice(-20);
-    const combinedInstruction = [job.instruction, ...commandHistory.map((entry, index) => "Comando adicional " + (index + 1) + ": " + entry.instruction)].join("\n\n");
     const result = await analyzeVideo({
       sourcePath: path.join(jobDir, job.sourceFile),
       instruction: command,
