@@ -55,7 +55,7 @@ function buildFrameTimes(duration) {
   const count = Math.min(MAX_FRAMES, Math.max(2, Math.ceil(duration / 3)));
   if (count === 1) return [0];
   return Array.from({ length: count }, (_, index) =>
-    Number(((duration - 0.05) * index / (count - 1)).toFixed(2))
+    Number((Math.max(0, duration - 0.05) * index / (count - 1)).toFixed(2))
   );
 }
 
