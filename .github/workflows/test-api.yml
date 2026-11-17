@@ -59,6 +59,17 @@ jobs:
           code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8787/api/jobs)
           test "$code" = "401"
 
+          command_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://127.0.0.1:8787/api/jobs/not-a-uuid/command \
+            -H "Authorization: Bearer $TOP_VIDEO_API_TOKEN" -H "Content-Type: application/json" \
+            -d '{"instruction":"aumente as legendas"}')
+          test "$command_code" = "400"
+
+          upload_json_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://127.0.0.1:8787/api/jobs \
+            -H "Authorization: Bearer $TOP_VIDEO_API_TOKEN" -H "Content-Type: application/json" \
+            -d '{"instruction":"teste","openaiFileIdRefs":[]}')
+          test "$upload_json_code" = "400"
+          echo "Rotas de conversa e upload por referência do ChatGPT presentes."
+
           printf 'TOPVIDEO-TEST-FILE' > /tmp/sample.mp4
           response=$(curl -fsS -X POST http://127.0.0.1:8787/api/jobs \
             -H "Authorization: Bearer $TOP_VIDEO_API_TOKEN" \
