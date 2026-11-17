@@ -27,13 +27,13 @@ A composição `MotionDemo` tem 6 segundos, formato vertical 1080x1920 e 30 fps.
 
 ## O que ainda falta
 
-- Envio seguro do vídeo para um servidor.
-- Conexão do GPT ao serviço privado por uma Action/API e publicação do servidor em nuvem.
-- Editor conversacional conectado à IA.
-- Integração de cenas 3D avançadas com Three.js/React Three Fiber, se necessária.
-- Fila persistente, armazenamento privado e testes de renderização em ambiente de produção.
-- Entrega do MP4 final diretamente na conversa do GPT, respeitando os limites de anexos da plataforma.
-- Autenticação, limites de tamanho e proteção dos arquivos.
+- Conectar a interface web atual à API (ela ainda apenas pré-visualiza o vídeo e organiza o briefing).
+- Publicar a API em um servidor com FFmpeg, FFprobe, Chromium e dependências do Remotion.
+- Conectar o GPT à API hospedada por uma Action autenticada.
+- Adicionar fila persistente, armazenamento privado com expiração e recuperação de trabalhos após reinícios.
+- Automatizar a geração e composição dos assets visuais sugeridos pela IA (imagens, ilustrações e objetos 3D).
+- Adicionar trilha musical separada e validar redução de ruído em gravações reais.
+- Validar a entrega do MP4 pela integração conversacional; atualmente o endpoint de download existe, mas ainda não está conectado ao GPT.
 
 ## Pré-visualização da interface
 
@@ -72,7 +72,7 @@ A API fica em `http://localhost:8787`. Upload máximo atual: 100 MB. Os arquivos
 
 ### Teste automatizado
 
-O workflow manual [Testar API TOP VIDEO](.github/workflows/test-api.yml) exercita saúde, bloqueio sem token, upload, consulta e exclusão usando um arquivo de teste. Abra a aba **Actions**, selecione **Testar API TOP VIDEO** e use **Run workflow**. Isso testa a API no ambiente temporário do GitHub Actions; não publica um servidor permanente.
+O workflow [Testar API TOP VIDEO](.github/workflows/test-api.yml) é executado em pushes para `main` e também pode ser iniciado manualmente. Ele valida sintaxe, testes unitários, tipos, schema, renderização real de um vídeo sintético com FFmpeg + Remotion e rotas básicas da API. Isso testa o pipeline em ambiente temporário do GitHub Actions; não publica um servidor permanente.
 
 
 ## Inteligência de análise de vídeo — modo Híbrido
@@ -133,7 +133,7 @@ A aprovação inicia o render em segundo plano no próprio processo Node. Se o s
 
 ### Testes
 
-Execute `npm test` para os testes da linha do tempo e use o workflow manual **Testar API TOP VIDEO** na aba Actions para validar sintaxe, schema, proteções e rotas da API. O workflow não testa uma renderização real porque não envia um vídeo válido de produção nem usa uma chave da OpenAI.
+Execute `npm test` para os testes unitários da linha do tempo. Execute `npm run test:render` em um ambiente com FFmpeg e Chromium para renderizar um vídeo sintético de ponta a ponta. O workflow do GitHub Actions executa ambos, além das verificações da API. O teste sintético não usa uma chave da OpenAI nem substitui um teste com vídeo real enviado por usuário.
 
 
 ## Renderização integrada com Remotion
