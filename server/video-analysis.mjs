@@ -186,7 +186,7 @@ LIMITES DO JSON:
         temperature: 0.1,
         response_format: { type: "json_object" },
         messages: [
-          { role: "system", content: TOP_VIDEO_EDITOR_PROFILE.system + "\\n\\nResponda com JSON válido, sem inventar observações e respeitando rigorosamente os limites temporais." },
+          { role: "system", content: TOP_VIDEO_EDITOR_PROFILE.system + "\n\nResponda com JSON válido, sem inventar observações e respeitando rigorosamente os limites temporais." },
           { role: "user", content }
         ]
       })
