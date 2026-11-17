@@ -45,3 +45,30 @@ A interface está em `public/`. O arquivo `vercel.json` está configurado para p
 A arquitetura planejada para upload privado, interpretação do pedido, aprovação, renderização e entrega está documentada em [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md). Esse documento é uma especificação, não a confirmação de que esses serviços já estejam ativos.
 
 **Privacidade:** vídeos de usuários não devem ser enviados ao GitHub. A integração futura deverá usar armazenamento privado temporário, autenticação, links assinados e exclusão dos arquivos. O projeto não foi publicado como site.
+
+
+## API inicial (nova etapa)
+
+Foi adicionada uma API Node.js em `server/index.mjs` para a primeira etapa do fluxo:
+
+- `GET /health`: verifica se o serviço está ativo.
+- `POST /api/jobs`: recebe um vídeo (MP4, MOV, WebM ou MKV), instrução e formato; exige autenticação Bearer.
+- `GET /api/jobs/:id`: consulta os metadados do trabalho.
+- `DELETE /api/jobs/:id`: exclui os arquivos daquele trabalho.
+
+### Executar localmente
+
+Requer Node.js 20 ou superior:
+
+1. Copie `.env.example` para `.env`.
+2. Troque `TOP_VIDEO_API_TOKEN` por um segredo aleatório longo (não compartilhe nem faça commit do arquivo `.env`).
+3. Execute `npm install`.
+4. Execute `npm run api`.
+
+A API fica em `http://localhost:8787`. Upload máximo atual: 100 MB. Os arquivos são guardados em `storage/jobs`, fora do Git.
+
+**Limitações desta primeira API:** armazenamento local, sem autenticação de usuários além de um token de serviço, sem expiração automática, sem inspeção real do codec/duração, sem IA, sem aprovação implementada e sem renderização. Não exponha esta API à internet nem envie vídeos pessoais para ela antes de configurarmos armazenamento privado, limites operacionais e autenticação adequada.
+
+### Teste automatizado
+
+O workflow manual [Testar API TOP VIDEO](.github/workflows/test-api.yml) exercita saúde, bloqueio sem token, upload, consulta e exclusão usando um arquivo de teste. Abra a aba **Actions**, selecione **Testar API TOP VIDEO** e use **Run workflow**. Isso testa a API no ambiente temporário do GitHub Actions; não publica um servidor permanente.
