@@ -38,7 +38,7 @@ app.addHook("preHandler", async (request, reply) => {
 app.get("/health", async () => ({
   status: "ok",
   service: "top-video-api",
-  stage: "private-upload-foundation"
+  stage: "private-upload-and-ai-analysis"
 }));
 
 app.post("/api/jobs", async (request, reply) => {
@@ -102,7 +102,7 @@ app.post("/api/jobs", async (request, reply) => {
     approvalRequired,
     createdAt,
     sourceFile: path.basename(sourcePath),
-    note: "Arquivo recebido. A análise por IA e a renderização ainda não estão conectadas."
+    note: "Vídeo recebido. Execute a rota de análise para a IA interpretar o conteúdo e preparar um plano para aprovação."
   };
 
   try {
@@ -148,7 +148,8 @@ app.post("/api/jobs/:id/analyze", async (request, reply) => {
       analysisCompletedAt: new Date().toISOString(),
       editPlan: result.plan,
       transcript: result.transcript,
-      analysisNotes: result.notes
+      analysisNotes: result.notes,
+      analysisWarnings: result.notes.warnings
     };
     await writeFile(path.join(jobDir, "job.json"), JSON.stringify(updated, null, 2), { mode: 0o600 });
     await writeFile(path.join(jobDir, "edit-plan.json"), JSON.stringify(result.plan, null, 2), { mode: 0o600 });
