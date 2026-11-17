@@ -60,7 +60,7 @@ function buildFrameTimes(duration) {
   );
 }
 
-export async function analyzeVideo({ sourcePath, instruction, aspectRatio, schemaPath, apiKey, model, previousPlan = null, commandMode = false }) {
+export async function analyzeVideo({ sourcePath, instruction, aspectRatio, schemaPath, apiKey, model, previousPlan = null, commandMode = false, existingTranscript = null }) {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), "top-video-analysis-"));
   try {
     const { stdout: probe } = await run("ffprobe", [
@@ -92,17 +92,21 @@ export async function analyzeVideo({ sourcePath, instruction, aspectRatio, schem
 
     const audioPath = path.join(tempDir, "audio.mp3");
     let audioResult = { text: "", status: "unavailable", warning: null };
-    try {
-      await run("ffmpeg", [
-        "-y", "-i", sourcePath, "-vn", "-ac", "1", "-ar", "16000", "-b:a", "48k", audioPath
-      ]);
-      audioResult = await transcribe(audioPath, apiKey);
-    } catch (error) {
-      audioResult = {
-        text: "",
-        status: "failed",
-        warning: error?.publicMessage || "Não foi possível extrair o áudio do vídeo."
-      };
+    if (typeof existingTranscript === "string") {
+      audioResult = { text: existingTranscript, status: "reused", warning: null };
+    } else {
+      try {
+        await run("ffmpeg", [
+          "-y", "-i", sourcePath, "-vn", "-ac", "1", "-ar", "16000", "-b:a", "48k", audioPath
+        ]);
+        audioResult = await transcribe(audioPath, apiKey);
+      } catch (error) {
+        audioResult = {
+          text: "",
+          status: "failed",
+          warning: error?.publicMessage || "Não foi possível extrair o áudio do vídeo."
+        };
+      }
     }
 
     const schema = JSON.parse(await readFile(schemaPath, "utf8"));
