@@ -100,7 +100,8 @@ export async function renderApprovedPlan({ sourcePath, outputPath, jobDir, plan 
     filters.push(videoInputs[0] + "null[vjoined]");
     if (hasAudio) filters.push(audioInputs[0] + "anull[ajoined]");
   } else {
-    filters.push(videoInputs.join("") + audioInputs.join("") + "concat=n=" + segments.length + ":v=1:a=" + (hasAudio ? 1 : 0) + "[vjoined]" + (hasAudio ? "[ajoined]" : ""));
+    const concatInputs = segments.map((_, index) => "[" + "vseg" + index + "]" + (hasAudio ? "[aseg" + index + "]" : "")).join("");
+    filters.push(concatInputs + "concat=n=" + segments.length + ":v=1:a=" + (hasAudio ? 1 : 0) + "[vjoined]" + (hasAudio ? "[ajoined]" : ""));
   }
   filters.push("[vjoined]scale=" + width + ":" + height + ":force_original_aspect_ratio=increase,crop=" + width + ":" + height + ",setsar=1,fps=" + fps + "[vscaled]");
 
