@@ -224,7 +224,8 @@ app.post("/api/jobs/:id/command", async (request, reply) => {
       apiKey: process.env.OPENAI_API_KEY,
       model: process.env.OPENAI_VISION_MODEL || "gpt-4o-mini",
       previousPlan: job.editPlan,
-      commandMode: true
+      commandMode: true,
+      existingTranscript: job.transcript || ""
     });
     const updated = {
       ...job,
