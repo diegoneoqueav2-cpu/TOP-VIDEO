@@ -22,14 +22,41 @@ const clamp = (value, duration) => Math.max(0, Math.min(duration, Number(value))
 const fmt = (value) => Number(value).toFixed(3);
 
 export function buildKeptSegments(edits, duration) {
-  const explicit = edits.filter((item) => item.type === "keep" || item.type === "trim");
+  const normalize = (items) => items
+    .map((item) => [clamp(item.startSeconds, duration), clamp(item.endSeconds, duration)])
+    .filter(([start, end]) => end - start >= 0.08)
+    .sort((a, b) => a[0] - b[0]);
+
+  const merge = (ranges) => {
+    const result = [];
+    for (const range of ranges) {
+      const last = result.at(-1);
+      if (last && range[0] <= last[1] + 0.02) last[1] = Math.max(last[1], range[1]);
+      else result.push([...range]);
+    }
+    return result;
+  };
+
+  const explicit = normalize(edits.filter((item) => item.type === "keep" || item.type === "trim"));
+  const removed = merge(normalize(edits.filter((item) => item.type === "remove")));
   let ranges;
+
   if (explicit.length) {
-    ranges = explicit.map((item) => [clamp(item.startSeconds, duration), clamp(item.endSeconds, duration)]);
+    // Explicit keep/trim ranges define the intended edit. Remove ranges are
+    // then subtracted so mixed plans never silently ignore a requested cut.
+    ranges = merge(explicit).flatMap(([start, end]) => {
+      const pieces = [];
+      let cursor = start;
+      for (const [removeStart, removeEnd] of removed) {
+        if (removeEnd <= cursor || removeStart >= end) continue;
+        if (removeStart > cursor) pieces.push([cursor, Math.min(removeStart, end)]);
+        cursor = Math.max(cursor, removeEnd);
+        if (cursor >= end) break;
+      }
+      if (cursor < end) pieces.push([cursor, end]);
+      return pieces;
+    });
   } else {
-    const removed = edits.filter((item) => item.type === "remove")
-      .map((item) => [clamp(item.startSeconds, duration), clamp(item.endSeconds, duration)])
-      .sort((a, b) => a[0] - b[0]);
     ranges = [];
     let cursor = 0;
     for (const [start, end] of removed) {
@@ -38,12 +65,8 @@ export function buildKeptSegments(edits, duration) {
     }
     if (cursor < duration) ranges.push([cursor, duration]);
   }
-  const merged = [];
-  for (const range of ranges.filter(([a, b]) => b - a >= 0.08).sort((a, b) => a[0] - b[0])) {
-    const last = merged.at(-1);
-    if (last && range[0] <= last[1] + 0.02) last[1] = Math.max(last[1], range[1]);
-    else merged.push([...range]);
-  }
+
+  const merged = merge(ranges.filter(([start, end]) => end - start >= 0.08));
   if (!merged.length) throw new Error("O plano removeu todo o vídeo. Ajuste os cortes antes de renderizar.");
   let outputStart = 0;
   return merged.map(([sourceStart, sourceEnd]) => {
