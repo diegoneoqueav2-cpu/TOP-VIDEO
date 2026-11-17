@@ -26,6 +26,8 @@ jobs:
         run: |
           node --check server/index.mjs
           node --check server/video-analysis.mjs
+          node --check server/editor-profile.mjs
+          node --input-type=module -e "import { TOP_VIDEO_EDITOR_PROFILE as p } from './server/editor-profile.mjs'; if(!p.system.includes('aprovação humana') || !p.userTemplate) process.exit(1); console.log('Perfil editorial carregado')"
           node --input-type=module -e "import fs from 'node:fs'; import Ajv2020 from 'ajv/dist/2020.js'; const schema=JSON.parse(fs.readFileSync('schemas/edit-plan.schema.json','utf8')); new Ajv2020({allErrors:true,strict:false}).compile(schema); console.log('Schema de edição válido')"
 
       - name: Testar saúde, autenticação, upload, consulta e exclusão
