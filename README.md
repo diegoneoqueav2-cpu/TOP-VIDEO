@@ -72,3 +72,27 @@ A API fica em `http://localhost:8787`. Upload máximo atual: 100 MB. Os arquivos
 ### Teste automatizado
 
 O workflow manual [Testar API TOP VIDEO](.github/workflows/test-api.yml) exercita saúde, bloqueio sem token, upload, consulta e exclusão usando um arquivo de teste. Abra a aba **Actions**, selecione **Testar API TOP VIDEO** e use **Run workflow**. Isso testa a API no ambiente temporário do GitHub Actions; não publica um servidor permanente.
+
+
+## Inteligência de análise de vídeo — modo Híbrido
+
+A rota autenticada `POST /api/jobs/:id/analyze` inicia a análise do vídeo recebido:
+
+1. FFprobe mede a duração e FFmpeg extrai até 8 quadros representativos e uma faixa de áudio temporária.
+2. Whisper transcreve o áudio em português quando há faixa de áudio disponível e dentro do limite.
+3. Um modelo com visão (configurável por `OPENAI_VISION_MODEL`, padrão `gpt-4o-mini`) interpreta quadros, instrução e transcrição.
+4. O modelo propõe cenas, cortes, legendas, motion graphics e sugestões de imagens/ilustrações/objetos 3D.
+5. O JSON é validado contra `schemas/edit-plan.schema.json` e salvo como `edit-plan.json`. O trabalho fica em `awaiting_approval` por padrão.
+
+### Configuração adicional
+
+Defina `OPENAI_API_KEY` somente no ambiente privado do servidor. Opcionalmente, defina `OPENAI_VISION_MODEL`. Instale FFmpeg e FFprobe no servidor. Nunca coloque a chave no navegador, no Git ou em arquivos enviados pelo usuário.
+
+Exemplo de chamada após o upload:
+
+```bash
+curl -X POST -H "Authorization: Bearer $TOP_VIDEO_API_TOKEN" \
+  http://localhost:8787/api/jobs/ID_DO_TRABALHO/analyze
+```
+
+**Limites desta etapa:** a análise usa até 8 quadros amostrados, não uma compreensão contínua de cada frame. A transcrição pode ficar vazia se não houver áudio ou se a extração/transcrição falhar. A IA gera apenas o plano; a inserção efetiva dos assets, a tela de aprovação e a renderização final ainda serão implementadas nas próximas etapas. O servidor continua sendo uma base local e não deve ser exposto publicamente sem endurecimento de segurança e armazenamento privado.
