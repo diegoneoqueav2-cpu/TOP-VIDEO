@@ -96,3 +96,10 @@ curl -X POST -H "Authorization: Bearer $TOP_VIDEO_API_TOKEN" \
 ```
 
 **Limites desta etapa:** a análise usa até 20 quadros amostrados, não uma compreensão contínua de cada frame nem detecção completa de cada corte. A transcrição pode ficar vazia se não houver fala, se o áudio exceder 24 MB ou se o serviço de transcrição falhar; esse aviso fica registrado no diagnóstico do trabalho. A IA gera apenas o plano; a inserção efetiva dos assets, a tela de aprovação e a renderização final ainda serão implementadas nas próximas etapas. O servidor continua sendo uma base local e não deve ser exposto publicamente sem endurecimento de segurança e armazenamento privado.
+
+
+## Perfil editorial da IA
+
+O comportamento padrão do diretor de edição está centralizado em `server/editor-profile.mjs`. Esse perfil define prioridades, linguagem visual, regras de preservação do conteúdo, critérios para cortes, legendas, motion graphics e uso de elementos 2D/3D. O perfil é carregado pela análise de vídeo e pode ser evoluído sem misturar as regras editoriais com o código de infraestrutura.
+
+A instrução específica enviada pelo usuário continua tendo prioridade sobre o estilo padrão, desde que seja segura e tecnicamente possível. O plano permanece sujeito à aprovação humana.
