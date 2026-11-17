@@ -133,9 +133,9 @@ A aprovação inicia o render em segundo plano no próprio processo Node. Se o s
 
 ### Integração conversacional com GPT
 
-O repositório inclui `openapi.gpt-actions.yaml` e `GPT-ACTION-SETUP.md` para configurar uma Action de GPT personalizado. O fluxo permite anexar um vídeo à conversa, enviar a referência de arquivo ao serviço, analisar, revisar o plano por novos comandos, aguardar aprovação, acompanhar a renderização e devolver o MP4 usando `openaiFileResponse`.
+O repositório inclui `openapi.gpt-actions.yaml` e `GPT-ACTION-SETUP.md` para configurar uma Action de GPT personalizado. O fluxo permite anexar um vídeo à conversa, enviar a referência de arquivo ao serviço, analisar, revisar o plano por novos comandos, aguardar aprovação, acompanhar a renderização e devolver um link temporário para baixar o MP4.
 
-A API aceita upload multipart para clientes web e JSON com `openaiFileIdRefs` para GPT Actions. Configure `TOP_VIDEO_PUBLIC_URL` com o endereço HTTPS público do servidor para gerar o link assinado temporário usado na entrega do MP4. A Action ainda não pode ser ativada até que o backend esteja publicado e o domínio real seja colocado no OpenAPI.
+A API aceita upload multipart para clientes web e JSON com `openaiFileIdRefs` para GPT Actions. Configure `TOP_VIDEO_PUBLIC_URL` com o endereço HTTPS público do servidor para gerar o link assinado temporário de download do MP4. GPT Actions não devolve vídeos como anexos; o GPT apresenta o link de download. A Action ainda não pode ser ativada até que o backend esteja publicado e o domínio real seja colocado no OpenAPI.
 
 ## Testes
 
