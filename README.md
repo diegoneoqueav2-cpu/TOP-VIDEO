@@ -5,6 +5,7 @@ Projeto inicial do editor inteligente de vídeos, construído com Remotion e uma
 ## O que já existe
 
 - Base Remotion para composição e renderização de vídeo.
+- Composição `EditedVideo` para renderização dinâmica de vídeos aprovados com legendas e gráficos animados.
 - Composição principal vertical 1080x1920 a 30 fps.
 - Composição de demonstração `MotionDemo` com tipografia e elementos gráficos 2D animados.
 - Cubo com seis faces, perspectiva e rotação 3D por transformações CSS.
@@ -27,11 +28,11 @@ A composição `MotionDemo` tem 6 segundos, formato vertical 1080x1920 e 30 fps.
 ## O que ainda falta
 
 - Envio seguro do vídeo para um servidor.
-- Integração com IA para interpretar as instruções e propor um plano real.
+- Conexão do GPT ao serviço privado por uma Action/API e publicação do servidor em nuvem.
 - Editor conversacional conectado à IA.
 - Integração de cenas 3D avançadas com Three.js/React Three Fiber, se necessária.
-- Serviço de renderização em nuvem com fila persistente e armazenamento privado.
-- Armazenamento temporário e entrega do MP4 final por link.
+- Fila persistente, armazenamento privado e testes de renderização em ambiente de produção.
+- Entrega do MP4 final diretamente na conversa do GPT, respeitando os limites de anexos da plataforma.
 - Autenticação, limites de tamanho e proteção dos arquivos.
 
 ## Pré-visualização da interface
@@ -67,7 +68,7 @@ Requer Node.js 20 ou superior:
 
 A API fica em `http://localhost:8787`. Upload máximo atual: 100 MB. Os arquivos são guardados em `storage/jobs`, fora do Git.
 
-**Limitações desta primeira API:** armazenamento local, sem autenticação de usuários além de um token de serviço, sem expiração automática, sem inspeção real do codec/duração, sem IA, sem aprovação implementada e sem renderização. Não exponha esta API à internet nem envie vídeos pessoais para ela antes de configurarmos armazenamento privado, limites operacionais e autenticação adequada.
+**Limitações atuais:** a API ainda depende de hospedagem configurada pelo projeto, usa armazenamento local e autenticação por token de serviço, sem fila persistente nem expiração automática. A análise por IA e o fluxo de aprovação estão descritos nas seções abaixo. Não exponha esta API à internet sem autenticação por usuário, limites operacionais e armazenamento privado.
 
 ### Teste automatizado
 
@@ -95,7 +96,7 @@ curl -X POST -H "Authorization: Bearer $TOP_VIDEO_API_TOKEN" \
   http://localhost:8787/api/jobs/ID_DO_TRABALHO/analyze
 ```
 
-**Limites desta etapa:** a análise usa até 20 quadros amostrados, não uma compreensão contínua de cada frame nem detecção completa de cada corte. A transcrição pode ficar vazia se não houver fala, se o áudio exceder 24 MB ou se o serviço de transcrição falhar; esse aviso fica registrado no diagnóstico do trabalho. A IA gera apenas o plano; a inserção efetiva dos assets, a tela de aprovação e a renderização final ainda serão implementadas nas próximas etapas. O servidor continua sendo uma base local e não deve ser exposto publicamente sem endurecimento de segurança e armazenamento privado.
+**Limites desta etapa:** a análise usa até 20 quadros amostrados, não uma compreensão contínua de cada frame nem detecção completa de cada corte. A transcrição pode ficar vazia se não houver fala, se o áudio exceder 24 MB ou se o serviço de transcrição falhar; esse aviso fica registrado no diagnóstico do trabalho. A IA gera o plano para aprovação; a composição final usa os elementos textuais aprovados. Imagens, ilustrações e objetos 3D sugeridos ainda não são gerados automaticamente. O servidor continua sendo uma base local e não deve ser exposto publicamente sem endurecimento de segurança e armazenamento privado.
 
 
 ## Perfil editorial da IA
@@ -112,7 +113,7 @@ A API agora tem uma primeira etapa executável de pós-aprovação:
 - `POST /api/jobs/:id/approve`: aceita somente trabalhos com plano de edição pronto e inicia a renderização em segundo plano.
 - `GET /api/jobs/:id`: informa estados como `awaiting_approval`, `rendering`, `completed` e `render_failed`, além de avisos e resultado técnico.
 - `GET /api/jobs/:id/download`: entrega o MP4 final quando o trabalho estiver concluído. A rota exige o mesmo token Bearer.
-- `server/render-worker.mjs`: usa FFmpeg para aplicar os trechos mantidos/remover intervalos, ajustar o formato de saída, preservar o áudio, aplicar redução de ruído quando solicitada e inserir legendas/gráficos de texto com entrada e saída suaves.
+- `server/render-worker.mjs`: usa FFmpeg para montar os trechos mantidos, ajustar o formato e tratar o áudio; em seguida usa Remotion para renderizar o vídeo final com legendas e gráficos de texto animados.
 - `test/render-worker.test.mjs`: verifica a montagem da linha do tempo e a proteção contra um plano que apague o vídeo inteiro.
 
 ### Fluxo atual
@@ -126,10 +127,22 @@ A API agora tem uma primeira etapa executável de pós-aprovação:
 
 ### Limites importantes desta primeira renderização
 
-Esta é uma versão inicial do executor, não um editor profissional completo ainda. A renderização já aplica cortes, formato, áudio e sobreposições de texto/legendas. As sugestões de imagens, ilustrações e objetos 3D ainda são registradas no plano, mas não são geradas nem compostas automaticamente. A trilha musical separada também não é adicionada nesta versão. A redução de ruído usa o filtro FFmpeg `afftdn`, que pode alterar a voz; sempre confira o resultado.
+Esta é uma versão inicial do executor, não um editor profissional completo ainda. A renderização foi integrada em duas etapas: FFmpeg prepara os cortes, o formato e o áudio; Remotion compõe o vídeo final com legendas e gráficos textuais animados. As sugestões de imagens, ilustrações e objetos 3D ainda são registradas no plano, mas não são geradas nem compostas automaticamente. A trilha musical separada também não é adicionada nesta versão. A redução de ruído usa o filtro FFmpeg `afftdn`, que pode alterar a voz; sempre confira o resultado.
 
-A aprovação inicia o render em segundo plano no próprio processo Node. Se o servidor reiniciar durante o trabalho, não existe fila persistente para recuperar automaticamente o render. Para uso real, o servidor precisa ter Node.js, FFmpeg, FFprobe, a fonte DejaVu Sans/Liberation Sans e armazenamento persistente. O armazenamento atual continua local; não exponha o servidor à internet sem autenticação por usuário, limites, expiração e armazenamento privado.
+A aprovação inicia o render em segundo plano no próprio processo Node. Se o servidor reiniciar durante o trabalho, não existe fila persistente para recuperar automaticamente o render. Para uso real, o servidor precisa ter Node.js, FFmpeg, FFprobe, dependências do Remotion/Chromium e armazenamento persistente. A integração foi adicionada ao código, mas ainda precisa passar por um teste de renderização real em servidor com vídeo válido. O armazenamento atual continua local; não exponha o servidor à internet sem autenticação por usuário, limites, expiração e armazenamento privado.
 
 ### Testes
 
 Execute `npm test` para os testes da linha do tempo e use o workflow manual **Testar API TOP VIDEO** na aba Actions para validar sintaxe, schema, proteções e rotas da API. O workflow não testa uma renderização real porque não envia um vídeo válido de produção nem usa uma chave da OpenAI.
+
+
+## Renderização integrada com Remotion
+
+Após a aprovação, o worker agora executa o seguinte fluxo:
+
+1. FFmpeg prepara um arquivo intermediário com os trechos aprovados, o enquadramento e o áudio.
+2. O worker cria um bundle Remotion isolado para o trabalho e disponibiliza o vídeo intermediário como asset privado.
+3. A composição `EditedVideo` renderiza o MP4 final com as legendas e os gráficos textuais animados.
+4. Os arquivos temporários do bundle são removidos após a renderização bem-sucedida.
+
+A dependência `@remotion/bundler` foi adicionada para permitir o bundle no servidor. **Esta alteração no código não significa que o serviço já esteja hospedado ou que a renderização tenha sido validada em produção.** O próximo teste precisa executar uma renderização real com FFmpeg, Chromium e um vídeo de teste válido.
