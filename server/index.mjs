@@ -11,7 +11,8 @@ const HOST = process.env.HOST || "0.0.0.0";
 const TOKEN = process.env.TOP_VIDEO_API_TOKEN || "";
 const STORAGE_DIR = path.resolve(process.env.TOP_VIDEO_STORAGE || "./storage/jobs");
 const MAX_FILE_BYTES = 100 * 1024 * 1024;
-const PUBLIC_URL = (process.env.TOP_VIDEO_PUBLIC_URL || "").replace(/\/$/, "");
+const PUBLIC_URL_RAW = process.env.TOP_VIDEO_PUBLIC_URL || "";
+const PUBLIC_URL = PUBLIC_URL_RAW.endsWith("/") ? PUBLIC_URL_RAW.slice(0, -1) : PUBLIC_URL_RAW;
 const SIGNED_FILE_TTL_SECONDS = 10 * 60;
 
 if (!TOKEN || TOKEN.length < 24) {
