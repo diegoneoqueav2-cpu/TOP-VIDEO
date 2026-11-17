@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: top-video-api
+    runtime: docker
+    plan: starter
+    region: ohio
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: true
+    disk:
+      name: top-video-storage
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: PORT
+        value: "10000"
+      - key: HOST
+        value: "0.0.0.0"
+      - key: TOP_VIDEO_STORAGE
+        value: /var/data/jobs
+      - key: TOP_VIDEO_API_TOKEN
+        generateValue: true
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_VISION_MODEL
+        value: gpt-4o-mini
+      - key: TOP_VIDEO_PUBLIC_URL
+        sync: false
