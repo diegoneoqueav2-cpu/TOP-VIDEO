@@ -1,0 +1,5 @@
+{
+  "buildCommand": "echo TOP VIDEO static interface ready",
+  "outputDirectory": "public",
+  "framework": null
+}
