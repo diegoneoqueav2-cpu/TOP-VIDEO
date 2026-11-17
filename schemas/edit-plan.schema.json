@@ -13,7 +13,10 @@
     "edits",
     "captions",
     "graphics",
-    "audio"
+    "audio",
+    "mode",
+    "analysis",
+    "assetSuggestions"
   ],
   "properties": {
     "version": {
@@ -80,7 +83,8 @@
             "maxLength": 300
           }
         }
-      }
+      },
+      "maxItems": 100
     },
     "captions": {
       "type": "array",
@@ -115,7 +119,8 @@
             ]
           }
         }
-      }
+      },
+      "maxItems": 300
     },
     "graphics": {
       "type": "array",
@@ -159,7 +164,8 @@
             ]
           }
         }
-      }
+      },
+      "maxItems": 100
     },
     "audio": {
       "type": "object",
@@ -183,6 +189,105 @@
           "type": "number",
           "minimum": 0,
           "maximum": 1
+        }
+      }
+    },
+    "mode": {
+      "const": "hybrid"
+    },
+    "analysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "summary",
+        "scenes"
+      ],
+      "properties": {
+        "summary": {
+          "type": "string",
+          "maxLength": 1200
+        },
+        "scenes": {
+          "type": "array",
+          "maxItems": 40,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "startSeconds",
+              "endSeconds",
+              "description",
+              "visualElements",
+              "editingOpportunity"
+            ],
+            "properties": {
+              "startSeconds": {
+                "type": "number",
+                "minimum": 0
+              },
+              "endSeconds": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "description": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "visualElements": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 120
+                },
+                "maxItems": 12
+              },
+              "editingOpportunity": {
+                "type": "string",
+                "maxLength": 400
+              }
+            }
+          }
+        }
+      }
+    },
+    "assetSuggestions": {
+      "type": "array",
+      "maxItems": 30,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "prompt",
+          "startSeconds",
+          "endSeconds",
+          "reason"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "image",
+              "illustration",
+              "2d_motion",
+              "3d_object"
+            ]
+          },
+          "prompt": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "startSeconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "endSeconds": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 300
+          }
         }
       }
     }
