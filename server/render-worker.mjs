@@ -8,7 +8,6 @@ import { renderMedia, selectComposition } from "@remotion/renderer";
 
 const exec = promisify(execFile);
 const OUTPUTS = { "9:16": [1080, 1920], "16:9": [1920, 1080], "1:1": [1080, 1080] };
-let serveUrlPromise;
 
 async function run(command, args, timeout = 30 * 60 * 1000) {
   try { return await exec(command, args, { timeout, maxBuffer: 16 * 1024 * 1024 }); }
@@ -121,8 +120,10 @@ export async function renderApprovedPlan({ sourcePath, outputPath, jobDir, plan 
   await mkdir(path.dirname(outputPath), { recursive: true });
   await run("ffmpeg", args);
 
-  // The trimmed video becomes a private Remotion static asset for this job.
-  await copyFile(intermediatePath, path.join(jobDir, "intermediate.mp4"));
+  // Bundle a per-job public directory so uploaded media is available to Remotion.
+  const remotionPublicDir = path.join(jobDir, "remotion-public");
+  await mkdir(remotionPublicDir, { recursive: true });
+  await copyFile(intermediatePath, path.join(remotionPublicDir, "intermediate.mp4"));
   const captions = plan.captions.flatMap((item) =>
     overlayWindows(item, segments).map((window) => ({ ...item, startSeconds: window.start, endSeconds: window.end }))
   );
@@ -130,14 +131,16 @@ export async function renderApprovedPlan({ sourcePath, outputPath, jobDir, plan 
     overlayWindows(item, segments).map((window) => ({ ...item, startSeconds: window.start, endSeconds: window.end }))
   );
   const durationInFrames = Math.max(1, Math.ceil(totalDuration * fps));
-  if (!serveUrlPromise) serveUrlPromise = bundle({ entryPoint: path.resolve("src/index.ts") });
-  const serveUrl = await serveUrlPromise;
+  const serveUrl = await bundle({
+    entryPoint: path.resolve("src/index.ts"),
+    publicDir: remotionPublicDir,
+    outDir: path.join(jobDir, "remotion-bundle")
+  });
   const inputProps = { durationInFrames, fps, width, height, captions, graphics };
   const composition = await selectComposition({
     serveUrl,
     id: "EditedVideo",
-    inputProps,
-    publicDir: jobDir
+    inputProps
   });
   await renderMedia({
     composition,
@@ -145,7 +148,6 @@ export async function renderApprovedPlan({ sourcePath, outputPath, jobDir, plan 
     codec: "h264",
     outputLocation: outputPath,
     inputProps,
-    publicDir: jobDir,
     pixelFormat: "yuv420p",
     crf: 20,
     concurrency: 2
