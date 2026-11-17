@@ -171,6 +171,55 @@ app.post("/api/jobs/:id/analyze", async (request, reply) => {
   }
 });
 
+app.post("/api/jobs/:id/command", async (request, reply) => {
+  const id = request.params.id;
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return reply.code(400).send({ error: "ID inválido." });
+  const command = String(request.body?.instruction || "").trim();
+  if (!command || command.length > 4000) return reply.code(400).send({ error: "Envie um comando de até 4.000 caracteres no campo instruction." });
+  if (!process.env.OPENAI_API_KEY) return reply.code(503).send({ error: "Análise indisponível: configure OPENAI_API_KEY no servidor." });
+
+  const jobDir = path.join(STORAGE_DIR, id);
+  let job;
+  try { job = JSON.parse(await readFile(path.join(jobDir, "job.json"), "utf8")); }
+  catch { return reply.code(404).send({ error: "Trabalho não encontrado." }); }
+  if (!job.editPlan || !["awaiting_approval", "plan_ready"].includes(job.status)) {
+    return reply.code(409).send({ error: "É necessário ter um plano aguardando aprovação. Não é possível alterar um vídeo já renderizado ou em processamento." });
+  }
+
+  try {
+    const { analyzeVideo } = await import("./video-analysis.mjs");
+    const commandHistory = [...(job.commandHistory || []), { instruction: command, createdAt: new Date().toISOString() }].slice(-20);
+    const combinedInstruction = [job.instruction, ...commandHistory.map((entry, index) => "Comando adicional " + (index + 1) + ": " + entry.instruction)].join("\n\n");
+    const result = await analyzeVideo({
+      sourcePath: path.join(jobDir, job.sourceFile),
+      instruction: combinedInstruction,
+      aspectRatio: job.aspectRatio,
+      schemaPath: path.resolve("schemas/edit-plan.schema.json"),
+      apiKey: process.env.OPENAI_API_KEY,
+      model: process.env.OPENAI_VISION_MODEL || "gpt-4o-mini",
+      previousPlan: job.editPlan,
+      commandMode: true
+    });
+    const updated = {
+      ...job,
+      status: job.approvalRequired ? "awaiting_approval" : "plan_ready",
+      commandHistory,
+      analysisRevision: (job.analysisRevision || 1) + 1,
+      latestCommand: command,
+      analysisCompletedAt: new Date().toISOString(),
+      editPlan: result.plan,
+      transcript: result.transcript,
+      analysisNotes: result.notes,
+      analysisWarnings: result.notes.warnings
+    };
+    await writeFile(path.join(jobDir, "job.json"), JSON.stringify(updated, null, 2), { mode: 0o600 });
+    await writeFile(path.join(jobDir, "edit-plan.json"), JSON.stringify(result.plan, null, 2), { mode: 0o600 });
+    return { jobId: id, status: updated.status, approvalRequired: job.approvalRequired, analysisRevision: updated.analysisRevision, appliedCommand: command, transcript: result.transcript, notes: result.notes, editPlan: result.plan };
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(422).send({ error: "Não foi possível aplicar o comando ao plano.", detail: error?.publicMessage || "Verifique FFmpeg, a chave da IA e os limites do arquivo." });
+  }
+});
 app.post("/api/jobs/:id/approve", async (request, reply) => {
   const id = request.params.id;
   if (!/^[0-9a-f-]{36}$/i.test(id)) return reply.code(400).send({ error: "ID inválido." });
