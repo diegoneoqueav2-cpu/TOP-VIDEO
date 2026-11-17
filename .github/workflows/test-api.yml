@@ -22,6 +22,12 @@ jobs:
       - name: Instalar dependências
         run: npm install
 
+      - name: Validar sintaxe e schema da análise
+        run: |
+          node --check server/index.mjs
+          node --check server/video-analysis.mjs
+          node --input-type=module -e "import fs from 'node:fs'; import Ajv2020 from 'ajv/dist/2020.js'; const schema=JSON.parse(fs.readFileSync('schemas/edit-plan.schema.json','utf8')); new Ajv2020({allErrors:true,strict:false}).compile(schema); console.log('Schema de edição válido')"
+
       - name: Testar saúde, autenticação, upload, consulta e exclusão
         env:
           TOP_VIDEO_API_TOKEN: test-token-for-github-actions-only-123456
