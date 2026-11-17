@@ -173,6 +173,7 @@ app.post("/api/jobs/:id/analyze", async (request, reply) => {
     const updated = {
       ...job,
       status: job.approvalRequired ? "awaiting_approval" : "plan_ready",
+      analysisRevision: 1,
       analysisCompletedAt: new Date().toISOString(),
       editPlan: result.plan,
       transcript: result.transcript,
@@ -312,7 +313,7 @@ app.post("/api/jobs/:id/approve", async (request, reply) => {
 app.get("/api/jobs/:id/file-response", async (request, reply) => {
   const id = request.params.id;
   if (!/^[0-9a-f-]{36}$/i.test(id)) return reply.code(400).send({ error: "ID inválido." });
-  if (!PUBLIC_URL) return reply.code(503).send({ error: "Configure TOP_VIDEO_PUBLIC_URL com a URL HTTPS pública da API para entregar o MP4 ao ChatGPT." });
+  if (!PUBLIC_URL.startsWith("https://")) return reply.code(503).send({ error: "Configure TOP_VIDEO_PUBLIC_URL com a URL HTTPS pública da API para entregar o MP4 ao ChatGPT." });
   try {
     const job = JSON.parse(await readFile(path.join(STORAGE_DIR, id, "job.json"), "utf8"));
     if (job.status !== "completed" || job.outputFile !== "final.mp4") return reply.code(409).send({ error: "O vídeo final ainda não está disponível." });
