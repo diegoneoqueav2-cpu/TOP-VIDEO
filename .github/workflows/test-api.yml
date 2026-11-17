@@ -27,6 +27,8 @@ jobs:
           node --check server/index.mjs
           node --check server/video-analysis.mjs
           node --check server/editor-profile.mjs
+          node --check server/render-worker.mjs
+          npm test
           node --input-type=module -e "import { TOP_VIDEO_EDITOR_PROFILE as p } from './server/editor-profile.mjs'; if(!p.system.includes('aprovação humana') || !p.userTemplate) process.exit(1); console.log('Perfil editorial carregado')"
           node --input-type=module -e "import fs from 'node:fs'; import Ajv2020 from 'ajv/dist/2020.js'; const schema=JSON.parse(fs.readFileSync('schemas/edit-plan.schema.json','utf8')); new Ajv2020({allErrors:true,strict:false}).compile(schema); console.log('Schema de edição válido')"
 
@@ -55,6 +57,10 @@ jobs:
             -F "instruction=Teste de recebimento" \
             -F "aspectRatio=9:16")
           job_id=$(node -e 'const x=JSON.parse(process.argv[1]); if(x.status!=="uploaded") process.exit(1); process.stdout.write(x.jobId)' "$response")
+
+          approve_code=$(curl -s -o /tmp/approve-response.json -w "%{http_code}" -X POST "http://127.0.0.1:8787/api/jobs/$job_id/approve" -H "Authorization: Bearer $TOP_VIDEO_API_TOKEN")
+          test "$approve_code" = "409"
+          echo "Proteção de aprovação sem plano OK"
 
           analysis_code=$(curl -s -o /tmp/analysis-response.json -w "%{http_code}" -X POST "http://127.0.0.1:8787/api/jobs/$job_id/analyze" -H "Authorization: Bearer $TOP_VIDEO_API_TOKEN")
           test "$analysis_code" = "503"
