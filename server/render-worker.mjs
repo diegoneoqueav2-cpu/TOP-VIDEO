@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { access, mkdir, writeFile } from "node:fs/promises";
+import { mkdir, writeFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { copyFile } from "node:fs/promises";
 import { bundle } from "@remotion/bundler";
@@ -53,9 +53,6 @@ export function buildKeptSegments(edits, duration) {
   });
 }
 
-function escapePath(value) {
-  return value.replace(/\\/g, "\\\\").replace(/:/g, "\\:").replace(/'/g, "\\'");
-}
 function overlayWindows(item, segments) {
   return segments.flatMap((segment) => {
     const start = Math.max(Number(item.startSeconds), segment.sourceStart);
@@ -63,17 +60,6 @@ function overlayWindows(item, segments) {
     return end > start ? [{ start: segment.outputStart + start - segment.sourceStart, end: segment.outputStart + end - segment.sourceStart }] : [];
   });
 }
-async function findFont() {
-  for (const font of [
-    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-    "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf",
-    "/System/Library/Fonts/Supplemental/Arial Bold.ttf"
-  ]) {
-    try { await access(font); return font; } catch {}
-  }
-  throw new Error("Instale DejaVu Sans ou Liberation Sans no servidor para renderizar as legendas.");
-}
-
 export async function renderApprovedPlan({ sourcePath, outputPath, jobDir, plan }) {
   const probeResult = await run("ffprobe", ["-v", "error", "-show_entries", "format=duration:stream=codec_type", "-of", "json", sourcePath]);
   const probe = JSON.parse(probeResult.stdout);
@@ -111,7 +97,7 @@ export async function renderApprovedPlan({ sourcePath, outputPath, jobDir, plan 
 
   const filterPath = path.join(jobDir, "render-filter.txt");
   const intermediatePath = path.join(jobDir, "intermediate.mp4");
-  await writeFile(filterPath, filters.join(";\\n"), { mode: 0o600 });
+  await writeFile(filterPath, filters.join(";\n"), { mode: 0o600 });
   const args = ["-y", "-i", sourcePath, "-filter_complex_script", filterPath, "-map", "[vout]"];
   if (hasAudio) args.push("-map", plan.audio?.noiseReduction ? "[aout]" : "[ajoined]");
   args.push("-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-r", String(fps), "-pix_fmt", "yuv420p");
@@ -152,6 +138,9 @@ export async function renderApprovedPlan({ sourcePath, outputPath, jobDir, plan 
     crf: 20,
     concurrency: 2
   });
+  await rm(remotionPublicDir, { recursive: true, force: true });
+  await rm(path.join(jobDir, "remotion-bundle"), { recursive: true, force: true });
+  await rm(intermediatePath, { force: true });
   return {
     durationSeconds: Number(totalDuration.toFixed(2)), width, height, fps,
     keptSegments: segments.length, captionsRendered: captions.length, graphicsRendered: graphics.length,
