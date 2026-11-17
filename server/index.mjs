@@ -122,6 +122,53 @@ app.post("/api/jobs", async (request, reply) => {
   });
 });
 
+
+app.post("/api/jobs/:id/analyze", async (request, reply) => {
+  const id = request.params.id;
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return reply.code(400).send({ error: "ID inválido." });
+  if (!process.env.OPENAI_API_KEY) {
+    return reply.code(503).send({ error: "Análise indisponível: configure OPENAI_API_KEY no servidor." });
+  }
+  try {
+    const jobDir = path.join(STORAGE_DIR, id);
+    const job = JSON.parse(await readFile(path.join(jobDir, "job.json"), "utf8"));
+    const sourcePath = path.join(jobDir, job.sourceFile);
+    const { analyzeVideo } = await import("./video-analysis.mjs");
+    const result = await analyzeVideo({
+      sourcePath,
+      instruction: job.instruction,
+      aspectRatio: job.aspectRatio,
+      schemaPath: path.resolve("schemas/edit-plan.schema.json"),
+      apiKey: process.env.OPENAI_API_KEY,
+      model: process.env.OPENAI_VISION_MODEL || "gpt-4o-mini"
+    });
+    const updated = {
+      ...job,
+      status: job.approvalRequired ? "awaiting_approval" : "plan_ready",
+      analysisCompletedAt: new Date().toISOString(),
+      editPlan: result.plan,
+      transcript: result.transcript,
+      analysisNotes: result.notes
+    };
+    await writeFile(path.join(jobDir, "job.json"), JSON.stringify(updated, null, 2), { mode: 0o600 });
+    await writeFile(path.join(jobDir, "edit-plan.json"), JSON.stringify(result.plan, null, 2), { mode: 0o600 });
+    return {
+      jobId: id,
+      status: updated.status,
+      approvalRequired: job.approvalRequired,
+      transcript: result.transcript,
+      notes: result.notes,
+      editPlan: result.plan
+    };
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(422).send({
+      error: "Não foi possível analisar o vídeo.",
+      detail: error?.publicMessage || "Verifique FFmpeg, a chave da IA e os limites do arquivo."
+    });
+  }
+});
+
 app.get("/api/jobs/:id", async (request, reply) => {
   const id = request.params.id;
   if (!/^[0-9a-f-]{36}$/i.test(id)) return reply.code(400).send({ error: "ID inválido." });
