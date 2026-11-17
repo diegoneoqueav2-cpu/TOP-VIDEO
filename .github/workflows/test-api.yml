@@ -1,0 +1,56 @@
+name: Testar API TOP VIDEO
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  api-smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Baixar projeto
+        uses: actions/checkout@v4
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instalar dependências
+        run: npm install
+
+      - name: Testar saúde, autenticação, upload, consulta e exclusão
+        env:
+          TOP_VIDEO_API_TOKEN: test-token-for-github-actions-only-123456
+          PORT: 8787
+          TOP_VIDEO_STORAGE: ./tmp-test-storage
+        run: |
+          npm run api > /tmp/top-video-api.log 2>&1 &
+          API_PID=$!
+          trap 'kill "$API_PID" 2>/dev/null || true; rm -rf tmp-test-storage' EXIT
+
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8787/health; then break; fi
+            sleep 2
+          done
+
+          code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8787/api/jobs)
+          test "$code" = "401"
+
+          printf 'TOPVIDEO-TEST-FILE' > /tmp/sample.mp4
+          response=$(curl -fsS -X POST http://127.0.0.1:8787/api/jobs \
+            -H "Authorization: Bearer $TOP_VIDEO_API_TOKEN" \
+            -F "video=@/tmp/sample.mp4;type=video/mp4" \
+            -F "instruction=Teste de recebimento" \
+            -F "aspectRatio=9:16")
+          job_id=$(node -e 'const x=JSON.parse(process.argv[1]); if(x.status!=="uploaded") process.exit(1); process.stdout.write(x.jobId)' "$response")
+
+          curl -fsS "http://127.0.0.1:8787/api/jobs/$job_id" \
+            -H "Authorization: Bearer $TOP_VIDEO_API_TOKEN" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const x=JSON.parse(s);if(x.status!=="uploaded")process.exit(1);console.log("Consulta do trabalho OK")})'
+
+          curl -fsS -X DELETE "http://127.0.0.1:8787/api/jobs/$job_id" \
+            -H "Authorization: Bearer $TOP_VIDEO_API_TOKEN"
+          echo "API smoke test concluído."
