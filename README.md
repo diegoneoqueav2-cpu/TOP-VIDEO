@@ -30,7 +30,7 @@ A composição `MotionDemo` tem 6 segundos, formato vertical 1080x1920 e 30 fps.
 - Integração com IA para interpretar as instruções e propor um plano real.
 - Editor conversacional conectado à IA.
 - Integração de cenas 3D avançadas com Three.js/React Three Fiber, se necessária.
-- Serviço de renderização Remotion na nuvem.
+- Serviço de renderização em nuvem com fila persistente e armazenamento privado.
 - Armazenamento temporário e entrega do MP4 final por link.
 - Autenticação, limites de tamanho e proteção dos arquivos.
 
@@ -103,3 +103,33 @@ curl -X POST -H "Authorization: Bearer $TOP_VIDEO_API_TOKEN" \
 O comportamento padrão do diretor de edição está centralizado em `server/editor-profile.mjs`. Esse perfil define prioridades, linguagem visual, regras de preservação do conteúdo, critérios para cortes, legendas, motion graphics e uso de elementos 2D/3D. O perfil é carregado pela análise de vídeo e pode ser evoluído sem misturar as regras editoriais com o código de infraestrutura.
 
 A instrução específica enviada pelo usuário continua tendo prioridade sobre o estilo padrão, desde que seja segura e tecnicamente possível. O plano permanece sujeito à aprovação humana.
+
+
+## Aprovação e primeira renderização automática
+
+A API agora tem uma primeira etapa executável de pós-aprovação:
+
+- `POST /api/jobs/:id/approve`: aceita somente trabalhos com plano de edição pronto e inicia a renderização em segundo plano.
+- `GET /api/jobs/:id`: informa estados como `awaiting_approval`, `rendering`, `completed` e `render_failed`, além de avisos e resultado técnico.
+- `GET /api/jobs/:id/download`: entrega o MP4 final quando o trabalho estiver concluído. A rota exige o mesmo token Bearer.
+- `server/render-worker.mjs`: usa FFmpeg para aplicar os trechos mantidos/remover intervalos, ajustar o formato de saída, preservar o áudio, aplicar redução de ruído quando solicitada e inserir legendas/gráficos de texto com entrada e saída suaves.
+- `test/render-worker.test.mjs`: verifica a montagem da linha do tempo e a proteção contra um plano que apague o vídeo inteiro.
+
+### Fluxo atual
+
+1. Envie o vídeo com `POST /api/jobs`.
+2. Analise com `POST /api/jobs/ID/analyze`.
+3. Revise o plano retornado e os avisos.
+4. Somente depois de aprovar, chame `POST /api/jobs/ID/approve`.
+5. Consulte `GET /api/jobs/ID` até o status ser `completed` ou `render_failed`.
+6. Baixe por `GET /api/jobs/ID/download`.
+
+### Limites importantes desta primeira renderização
+
+Esta é uma versão inicial do executor, não um editor profissional completo ainda. A renderização já aplica cortes, formato, áudio e sobreposições de texto/legendas. As sugestões de imagens, ilustrações e objetos 3D ainda são registradas no plano, mas não são geradas nem compostas automaticamente. A trilha musical separada também não é adicionada nesta versão. A redução de ruído usa o filtro FFmpeg `afftdn`, que pode alterar a voz; sempre confira o resultado.
+
+A aprovação inicia o render em segundo plano no próprio processo Node. Se o servidor reiniciar durante o trabalho, não existe fila persistente para recuperar automaticamente o render. Para uso real, o servidor precisa ter Node.js, FFmpeg, FFprobe, a fonte DejaVu Sans/Liberation Sans e armazenamento persistente. O armazenamento atual continua local; não exponha o servidor à internet sem autenticação por usuário, limites, expiração e armazenamento privado.
+
+### Testes
+
+Execute `npm test` para os testes da linha do tempo e use o workflow manual **Testar API TOP VIDEO** na aba Actions para validar sintaxe, schema, proteções e rotas da API. O workflow não testa uma renderização real porque não envia um vídeo válido de produção nem usa uma chave da OpenAI.
