@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1710">
+  <meta name="description" content="TOP VIDEO — seu estúdio de edição inteligente.">
+  <title>TOP VIDEO — Estúdio</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="TOP VIDEO início">
+        <span class="brand-mark">T</span>
+        <span>TOP <b>VIDEO</b><small>ESTÚDIO INTELIGENTE</small></span>
+      </a>
+      <span class="status"><i></i> Ambiente de teste</span>
+    </header>
+
+    <section class="intro">
+      <p class="eyebrow">SEU VÍDEO. SUAS IDEIAS. UM NOVO RESULTADO.</p>
+      <h1>O que vamos <em>criar</em> hoje?</h1>
+      <p class="lead">Envie um vídeo do seu iPhone e descreva a edição que você imaginou. O TOP VIDEO está sendo preparado para transformar seu pedido em um projeto de edição.</p>
+    </section>
+
+    <section class="workspace">
+      <div class="section-heading"><span class="step">01</span><div><h2>Seu vídeo</h2><p>Escolha um arquivo para visualizar aqui.</p></div></div>
+      <label class="upload-zone" for="videoFile" id="uploadZone">
+        <input id="videoFile" type="file" accept="video/*">
+        <span class="upload-icon">↑</span>
+        <strong>Toque para enviar seu vídeo</strong>
+        <span class="muted">MP4, MOV e outros formatos de vídeo</span>
+        <span class="file-name" id="fileName">Nenhum vídeo selecionado</span>
+      </label>
+      <div class="preview-wrap" id="previewWrap" hidden>
+        <video id="videoPreview" controls playsinline></video>
+        <div class="file-meta" id="fileMeta"></div>
+      </div>
+
+      <div class="section-heading next"><span class="step">02</span><div><h2>Descreva a edição</h2><p>Escreva como se estivesse falando com um editor.</p></div></div>
+      <label class="field-label" for="instruction">O que você quer que seja feito?</label>
+      <textarea id="instruction" rows="5" placeholder="Ex.: Remova os silêncios, corte as partes repetidas, coloque legendas animadas em branco e amarelo e destaque as palavras mais importantes. Quero um visual limpo, com motion graphics verdes discretos."></textarea>
+
+      <div class="options">
+        <div class="option">
+          <label class="field-label" for="format">Formato do vídeo</label>
+          <select id="format">
+            <option value="vertical">Vertical — 9:16 (Reels / TikTok)</option>
+            <option value="horizontal">Horizontal — 16:9 (YouTube)</option>
+            <option value="square">Quadrado — 1:1</option>
+          </select>
+        </div>
+        <div class="option">
+          <label class="field-label" for="approval">Antes de renderizar</label>
+          <select id="approval">
+            <option value="yes">Quero aprovar o plano</option>
+            <option value="no">Pode seguir automaticamente</option>
+          </select>
+        </div>
+      </div>
+
+      <button class="primary" id="prepareButton" type="button">Preparar meu pedido <span>→</span></button>
+      <p class="privacy-note">Seu vídeo permanece neste navegador nesta etapa de demonstração. Ele ainda não é enviado para um servidor.</p>
+    </section>
+
+    <section class="brief-card" id="briefCard" hidden aria-live="polite">
+      <div class="brief-top"><span class="check">✓</span><span class="eyebrow">PEDIDO ORGANIZADO</span></div>
+      <h2>Seu briefing está pronto.</h2>
+      <p>Confira os detalhes abaixo. Esta demonstração organiza seu pedido; a análise por IA, o envio seguro e a renderização do MP4 serão conectados na próxima etapa.</p>
+      <dl id="briefDetails"></dl>
+      <div class="coming"><span></span> Próxima etapa: conectar IA e renderização na nuvem.</div>
+    </section>
+
+    <footer><span>TOP VIDEO</span><span>Feito para criar sem complicação.</span></footer>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>
