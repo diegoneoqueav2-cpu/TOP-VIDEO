@@ -157,11 +157,11 @@ paths:
         "409": { description: Não existe plano pronto para aprovação. }
   /api/jobs/{id}/file-response:
     get:
-      operationId: returnRenderedVideo
+      operationId: getRenderedVideoDownload
       summary: Entregar o MP4 final à conversa
       description: >
-        Depois de o trabalho ficar completed, retorna openaiFileResponse com
-        URL HTTPS assinada e temporária para o ChatGPT anexar o MP4 à conversa.
+        Depois de o trabalho ficar completed, retorna um link HTTPS assinado e
+        temporário para o usuário baixar o MP4. GPT Actions não anexa arquivos de vídeo à conversa.
       parameters:
         - $ref: "#/components/parameters/JobId"
       responses:
@@ -172,9 +172,10 @@ paths:
               schema:
                 type: object
                 properties:
-                  openaiFileResponse:
-                    type: array
-                    items: { type: string, format: uri }
+                  downloadUrl: { type: string, format: uri }
+                  expiresAt: { type: string, format: date-time }
+                  fileName: { type: string }
+                  mimeType: { type: string, example: video/mp4 }
         "409": { description: Renderização ainda não terminou. }
         "503": { description: TOP_VIDEO_PUBLIC_URL não configurada. }
 components:
