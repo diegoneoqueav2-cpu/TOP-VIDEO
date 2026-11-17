@@ -39,3 +39,9 @@ A composição `MotionDemo` tem 6 segundos, formato vertical 1080x1920 e 30 fps.
 A interface está em `public/`. O arquivo `vercel.json` está configurado para publicar essa pasta como site estático.
 
 **Importante:** a interface atual é um protótipo. O vídeo selecionado fica apenas no navegador; ainda não é enviado nem editado por IA. A demonstração de motion graphics é uma composição Remotion separada da interface.
+
+## Arquitetura e próximos passos
+
+A arquitetura planejada para upload privado, interpretação do pedido, aprovação, renderização e entrega está documentada em [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md). Esse documento é uma especificação, não a confirmação de que esses serviços já estejam ativos.
+
+**Privacidade:** vídeos de usuários não devem ser enviados ao GitHub. A integração futura deverá usar armazenamento privado temporário, autenticação, links assinados e exclusão dos arquivos. O projeto não foi publicado como site.
