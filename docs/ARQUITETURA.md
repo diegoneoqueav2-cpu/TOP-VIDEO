@@ -4,7 +4,7 @@
 
 Transformar o protótipo atual em um editor de vídeo conversacional. A pessoa envia um vídeo, descreve o resultado desejado em linguagem natural, recebe um plano de edição para aprovar e, só depois da aprovação, solicita a renderização e recebe o MP4.
 
-Este documento descreve a arquitetura-alvo. **Ela ainda não está implementada.** Não há, nesta etapa, upload para servidor, análise por IA, fila de renderização ou entrega automática.
+Este documento descreve a arquitetura-alvo e separa o que já foi iniciado do que ainda falta. A API inicial agora recebe arquivos em armazenamento local e permite consultar/excluir trabalhos; ainda não há análise por IA, fila de renderização ou entrega automática.
 
 ## Fluxo esperado
 
@@ -27,7 +27,7 @@ Este documento descreve a arquitetura-alvo. **Ela ainda não está implementada.
 
 ## Contrato inicial da API (proposta)
 
-Os caminhos abaixo são uma especificação para implementação futura; não existem endpoints ativos neste momento.
+Os endpoints de upload, consulta e exclusão estão implementados no servidor inicial em `server/index.mjs`. Os endpoints de planejamento, aprovação e download abaixo continuam sendo especificações futuras; não estão ativos.
 
 ### `POST /api/jobs`
 
