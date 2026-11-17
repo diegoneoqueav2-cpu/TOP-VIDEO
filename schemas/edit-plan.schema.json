@@ -1,0 +1,190 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://top-video.local/schemas/edit-plan.schema.json",
+  "title": "TOP VIDEO Edit Plan",
+  "description": "Plano estruturado e limitado de edição. Não contém código executável nem URLs arbitrárias.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "aspectRatio",
+    "fps",
+    "source",
+    "edits",
+    "captions",
+    "graphics",
+    "audio"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "aspectRatio": {
+      "enum": [
+        "9:16",
+        "16:9",
+        "1:1"
+      ]
+    },
+    "fps": {
+      "type": "integer",
+      "enum": [
+        24,
+        25,
+        30,
+        60
+      ]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "durationSeconds"
+      ],
+      "properties": {
+        "durationSeconds": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1800
+        }
+      }
+    },
+    "edits": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "startSeconds",
+          "endSeconds"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "keep",
+              "remove",
+              "trim"
+            ]
+          },
+          "startSeconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "endSeconds": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 300
+          }
+        }
+      }
+    },
+    "captions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "text",
+          "startSeconds",
+          "endSeconds",
+          "style"
+        ],
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 180
+          },
+          "startSeconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "endSeconds": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "style": {
+            "enum": [
+              "white",
+              "white_yellow",
+              "green"
+            ]
+          }
+        }
+      }
+    },
+    "graphics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "text",
+          "startSeconds",
+          "endSeconds"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "title",
+              "lower_third",
+              "callout",
+              "arrow",
+              "shape",
+              "simple_2d"
+            ]
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 180
+          },
+          "startSeconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "endSeconds": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "position": {
+            "enum": [
+              "top",
+              "center",
+              "bottom"
+            ]
+          }
+        }
+      }
+    },
+    "audio": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "noiseReduction",
+        "music"
+      ],
+      "properties": {
+        "noiseReduction": {
+          "type": "boolean"
+        },
+        "music": {
+          "enum": [
+            "none",
+            "user_provided",
+            "licensed_library"
+          ]
+        },
+        "musicVolume": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    }
+  }
+}
