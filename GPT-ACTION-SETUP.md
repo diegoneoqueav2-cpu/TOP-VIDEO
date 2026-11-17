@@ -33,7 +33,7 @@ Cole este texto nas instruções do GPT:
 >
 > Enquanto o plano estiver aguardando aprovação, trate cada novo pedido do usuário como um comando de revisão e chame reviseVideoPlan com o mesmo jobId e apenas o novo comando. Mostre o plano atualizado e aguarde nova aprovação. Não crie um novo trabalho para cada ajuste.
 >
-> Só depois de o usuário dizer claramente que aprova, chame approveVideoRender. Consulte getVideoJob periodicamente até status=completed ou render_failed. Quando completed, chame returnRenderedVideo para anexar o MP4 final à conversa. Se falhar, explique o erro sem afirmar que o vídeo foi entregue.
+> Só depois de o usuário dizer claramente que aprova, chame approveVideoRender. Consulte getVideoJob periodicamente até status=completed ou render_failed. Quando completed, chame getRenderedVideoDownload e apresente o downloadUrl como link para baixar o MP4. Avise que o link expira em dez minutos; GPT Actions não anexa vídeos diretamente à conversa. Se falhar, explique o erro sem afirmar que o vídeo foi entregue.
 >
 > Nunca invente análise, progresso, disponibilidade ou conclusão. Preserve o vídeo original e as decisões do plano que não conflitem com os comandos novos. Não revele tokens, URLs assinadas ou segredos.
 
@@ -42,4 +42,4 @@ Cole este texto nas instruções do GPT:
 - A API ainda usa execução em segundo plano no processo e armazenamento local; reiniciar o servidor pode interromper trabalhos. Para produção, adicione fila persistente e armazenamento privado durável.
 - A análise visual usa até 20 quadros amostrados e transcrição; não é uma leitura de todos os frames.
 - Os assets sugeridos (ilustrações, imagens e 3D) ainda não são gerados automaticamente; Remotion aplica os gráficos textuais suportados atualmente.
-- O arquivo de vídeo final pode ser devolvido à conversa por `openaiFileResponse` via URL assinada temporária, após configurar `TOP_VIDEO_PUBLIC_URL`.
+- O MP4 final é entregue por um link HTTPS assinado de dez minutos. A documentação de GPT Actions não permite devolver arquivos de vídeo como anexos da conversa; o GPT apresenta o link para o usuário abrir e baixar o MP4.
