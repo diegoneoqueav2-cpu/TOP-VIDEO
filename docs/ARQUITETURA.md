@@ -36,7 +36,7 @@ Quando o plano contém trechos explícitos para manter e intervalos para remover
 
 ## Interface atual
 
-A interface em `public/` é um protótipo mobile-first: permite selecionar e pré-visualizar um vídeo local e organizar as instruções em um briefing. Ela ainda não envia o arquivo para a API nem mostra o plano de análise. A integração conversacional está preparada via GPT Actions, com upload por `openaiFileIdRefs`, endpoint de comando incremental e entrega do MP4 por `openaiFileResponse`; requer backend publicado e configuração manual da Action.
+A interface em `public/` é um protótipo mobile-first: permite selecionar e pré-visualizar um vídeo local e organizar as instruções em um briefing. Ela ainda não envia o arquivo para a API nem mostra o plano de análise. A integração conversacional está preparada via GPT Actions, com upload por `openaiFileIdRefs`, endpoint de comando incremental e entrega do MP4 por link temporário de download; requer backend publicado e configuração manual da Action.
 
 As composições Remotion `Main` e `MotionDemo` continuam disponíveis para demonstrações independentes. `EditedVideo` é a composição usada pelo worker após aprovação.
 
@@ -54,7 +54,7 @@ As composições Remotion `Main` e `MotionDemo` continuam disponíveis para demo
 
 - `POST /api/jobs` aceita `openaiFileIdRefs` e busca com segurança o arquivo temporário anexado à conversa.
 - `POST /api/jobs/{id}/command` aplica novos comandos ao plano existente sem iniciar renderização e preserva histórico de comandos.
-- `GET /api/jobs/{id}/file-response` devolve `openaiFileResponse` com link assinado de curta duração; o endpoint `/file` valida a assinatura antes de servir o MP4.
+- `GET /api/jobs/{id}/file-response` devolve `downloadUrl` com link assinado de curta duração; o endpoint `/file` valida a assinatura antes de servir o MP4. GPT Actions não anexa arquivos de vídeo à conversa, então o GPT apresenta o link para download.
 - A chave Bearer da Action é `TOP_VIDEO_API_TOKEN`; a chave `OPENAI_API_KEY` fica somente no servidor.
 - O contrato está em `openapi.gpt-actions.yaml`; instruções de configuração em `GPT-ACTION-SETUP.md`.
 
