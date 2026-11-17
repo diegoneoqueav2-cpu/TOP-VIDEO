@@ -60,7 +60,7 @@ function buildFrameTimes(duration) {
   );
 }
 
-export async function analyzeVideo({ sourcePath, instruction, aspectRatio, schemaPath, apiKey, model }) {
+export async function analyzeVideo({ sourcePath, instruction, aspectRatio, schemaPath, apiKey, model, previousPlan = null, commandMode = false }) {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), "top-video-analysis-"));
   try {
     const { stdout: probe } = await run("ffprobe", [
@@ -112,6 +112,12 @@ MODO: HÍBRIDO. Preserve a filmagem original e proponha inserções de ilustraç
 
 INSTRUÇÕES DO USUÁRIO:
 ${instruction}
+
+${commandMode && previousPlan ? `COMANDO CONVERSACIONAL — REVISE O PLANO EXISTENTE:
+O JSON abaixo é a versão atual do plano. Trate o comando acima como uma alteração solicitada pelo usuário. Preserve todas as decisões anteriores que não conflitem com o novo comando, altere somente o necessário, mantenha os tempos válidos e devolva o plano completo atualizado. Não execute nem aprove a edição.
+PLANO ATUAL:
+${JSON.stringify(previousPlan)}
+` : ""}
 
 DADOS TÉCNICOS:
 - Duração exata: ${duration.toFixed(2)} segundos.
