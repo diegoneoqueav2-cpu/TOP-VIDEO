@@ -1,115 +1,67 @@
-# Arquitetura planejada — TOP VIDEO
+# Arquitetura e estado atual — TOP VIDEO
 
 ## Objetivo
 
-Transformar o protótipo atual em um editor de vídeo conversacional. A pessoa envia um vídeo, descreve o resultado desejado em linguagem natural, recebe um plano de edição para aprovar e, só depois da aprovação, solicita a renderização e recebe o MP4.
+O TOP VIDEO é um editor de vídeo assistido por IA em modo híbrido. A IA interpreta a filmagem e as instruções do usuário, prepara um plano estruturado e aguarda aprovação. Após a aprovação, FFmpeg executa os cortes e prepara a mídia; Remotion compõe e renderiza o vídeo final.
 
-Este documento descreve a arquitetura-alvo e separa o que já foi iniciado do que ainda falta. A API inicial agora recebe arquivos em armazenamento local e permite consultar/excluir trabalhos; ainda não há análise por IA, fila de renderização ou entrega automática.
+Este documento descreve o código existente e separa as partes implementadas das que ainda dependem de infraestrutura.
 
-## Fluxo esperado
+## Fluxo implementado na API
 
-1. **Entrada:** receber vídeo e instruções do usuário.
-2. **Validação:** verificar tipo real do arquivo, tamanho, duração e formato; rejeitar arquivos inválidos.
-3. **Plano de edição:** IA transforma o pedido em um plano estruturado, sem editar o vídeo diretamente.
-4. **Aprovação:** apresentar cortes, legendas, textos, efeitos, proporção e trilha planejados. Não renderizar enquanto a aprovação estiver pendente.
-5. **Renderização:** converter o plano aprovado em propriedades de composição Remotion e executar o render em um worker.
-6. **Entrega:** disponibilizar o MP4 por link temporário e permitir sua exclusão.
+1. **Upload:** `POST /api/jobs` recebe o vídeo, a instrução do usuário e o formato de saída. Exige token Bearer.
+2. **Análise:** `POST /api/jobs/{jobId}/analyze` usa FFprobe/FFmpeg para ler metadados, extrair até 20 quadros distribuídos e extrair o áudio.
+3. **Interpretação:** o áudio é transcrito quando possível; um modelo com visão recebe os quadros com seus tempos, a transcrição, o perfil editorial e a instrução do usuário.
+4. **Plano:** a IA retorna análise de cenas, cortes, legendas, gráficos e sugestões de assets. O JSON é validado por `schemas/edit-plan.schema.json`.
+5. **Aprovação:** o plano fica em `awaiting_approval` por padrão. A aprovação humana é mantida antes da renderização.
+6. **Renderização:** `POST /api/jobs/{jobId}/approve` inicia o worker. FFmpeg prepara os trechos e o áudio; Remotion renderiza legendas e gráficos textuais animados.
+7. **Consulta e download:** `GET /api/jobs/{jobId}` consulta o estado; `GET /api/jobs/{jobId}/download` entrega o MP4 quando concluído.
+8. **Exclusão:** `DELETE /api/jobs/{jobId}` remove os arquivos do trabalho.
 
-## Componentes
+Todas as rotas de trabalho exigem o token de serviço configurado em `TOP_VIDEO_API_TOKEN`. `GET /health` é público.
 
-- **Interface:** experiência mobile-first em português. A interface existente em `public/` é apenas um protótipo local.
-- **API:** recebe pedidos, valida permissões e coordena os trabalhos. Deve ser uma API autenticada; não confiar em dados enviados pelo navegador.
-- **Armazenamento temporário:** guarda vídeos originais e resultados fora do GitHub, com acesso privado, URLs assinadas e prazo de expiração.
-- **Interpretador de pedidos:** camada independente do fornecedor de IA. Recebe instruções e metadados do vídeo e devolve um plano JSON validado.
-- **Fila e worker:** processam trabalhos sem manter a conexão do celular aberta.
-- **Remotion:** renderiza o vídeo aprovado. Remotion é o motor de composição/renderização, não o interpretador de linguagem natural.
-- **Entrega:** retorna estado do trabalho e link temporário do arquivo final.
+## Interpretação e comandos do usuário
 
-## Contrato inicial da API (proposta)
+A instrução enviada no upload é incluída diretamente no prompt de análise, junto com o perfil editorial e o conteúdo visual/auditivo extraído. A IA deve respeitar a instrução explícita, preservar o original quando houver dúvida e produzir somente um plano para aprovação.
 
-Os endpoints de upload, consulta e exclusão estão implementados no servidor inicial em `server/index.mjs`. Os endpoints de planejamento, aprovação e download abaixo continuam sendo especificações futuras; não estão ativos.
+A análise visual atual usa até 20 quadros amostrados; não é uma leitura contínua de todos os frames. A transcrição é enviada como contexto ao modelo de visão. A transcrição pode falhar ou ser pulada por limite de tamanho; esse estado aparece nos avisos da análise.
 
-### `POST /api/jobs`
+## Renderização híbrida
 
-Cria um trabalho após autenticação e upload seguro.
+- **FFmpeg/FFprobe:** metadados, extração de quadros e áudio, cortes, concatenação, enquadramento, FPS e redução de ruído opcional.
+- **Remotion:** composição final do vídeo intermediário, legendas e gráficos de texto animados.
+- **Assets:** sugestões de imagens, ilustrações e objetos 3D são descritas no plano, mas ainda não são geradas automaticamente nesta versão.
+- **Áudio:** o áudio original é preservado nos trechos mantidos. A trilha musical separada ainda não é adicionada.
 
-Resposta esperada:
-```json
-{
-  "jobId": "identificador",
-  "status": "uploaded"
-}
-```
+Quando o plano contém trechos explícitos para manter e intervalos para remover, o worker deve subtrair as remoções dos trechos mantidos antes de montar a linha do tempo.
 
-### `POST /api/jobs/{jobId}/plan`
+## Interface atual
 
-Solicita a interpretação das instruções. O servidor deve validar o arquivo e produzir um plano estruturado.
+A interface em `public/` é um protótipo mobile-first: permite selecionar e pré-visualizar um vídeo local e organizar as instruções em um briefing. Ela ainda não envia o arquivo para a API nem mostra o plano de análise. A API e a interface são, portanto, componentes separados nesta etapa.
 
-Resposta esperada:
-```json
-{
-  "jobId": "identificador",
-  "status": "awaiting_approval",
-  "plan": {
-    "aspectRatio": "9:16",
-    "edits": [],
-    "captions": [],
-    "graphics": [],
-    "audio": []
-  }
-}
-```
+As composições Remotion `Main` e `MotionDemo` continuam disponíveis para demonstrações independentes. `EditedVideo` é a composição usada pelo worker após aprovação.
 
-### `POST /api/jobs/{jobId}/approve`
+## Infraestrutura ainda necessária
 
-Confirma explicitamente o plano. Só uma aprovação válida pode colocar o trabalho na fila de renderização.
+- Hospedar a API em um ambiente persistente com Node.js, FFmpeg, FFprobe e Chromium compatível com Remotion.
+- Configurar `TOP_VIDEO_API_TOKEN` e `OPENAI_API_KEY` como variáveis secretas no servidor.
+- Usar armazenamento privado persistente, expiração e fila durável para recuperar trabalhos após reinícios.
+- Conectar a interface web ou o GPT à API por integração autenticada.
+- Automatizar a geração/composição dos assets sugeridos e implementar trilha musical quando houver arquivo ou fonte licenciada.
+- Validar o ciclo completo com vídeos reais e, depois, a entrega do MP4 dentro da experiência conversacional.
 
-### `GET /api/jobs/{jobId}`
+## Testes
 
-Consulta estados possíveis: `uploaded`, `planning`, `awaiting_approval`, `queued`, `rendering`, `completed` ou `failed`.
+- `npm test`: testes unitários da montagem de segmentos e regras de corte.
+- `npm run test:render`: cria um vídeo sintético e testa FFmpeg + Remotion até produzir um MP4 final.
+- `.github/workflows/test-api.yml`: executa verificações de sintaxe, TypeScript, schema, testes, renderização sintética e smoke tests da API.
 
-### `GET /api/jobs/{jobId}/download`
+Os testes sintéticos não substituem uma validação com vídeo real nem comprovam que o serviço está hospedado. O repositório contém o código; não é, por si só, um servidor ativo.
 
-Retorna um link temporário para o MP4 quando o trabalho estiver concluído.
+## Segurança e privacidade
 
-### `DELETE /api/jobs/{jobId}`
-
-Solicita a exclusão do original, do resultado e dos dados associados, respeitando os registros operacionais mínimos necessários.
-
-## Regras de segurança e privacidade
-
-- Nunca guardar vídeos, chaves de API ou credenciais no repositório Git.
-- Exigir autenticação e autorização em todas as operações de trabalho.
-- Usar URLs assinadas com validade curta; não tornar os vídeos públicos.
-- Definir limites de tamanho, duração, formatos aceitos e tempo de processamento.
-- Validar MIME type e conteúdo do arquivo; não confiar apenas no nome/extensão.
-- Isolar cada trabalho e impedir que uma pessoa acesse arquivos de outra.
-- Apagar originais e renders automaticamente após prazo definido e oferecer exclusão sob demanda.
-- Não enviar vídeo a um provedor de IA sem informar claramente o serviço e a finalidade.
-- Não executar código arbitrário produzido pelo modelo. A IA deve retornar um plano JSON limitado a operações permitidas.
-- Registrar erros e IDs de trabalho, evitando registrar conteúdo privado ou tokens.
-
-## Decisões para manter o custo controlado
-
-- Começar com vídeos curtos e limites conservadores.
-- Separar a análise por IA da renderização; não chamar IA repetidamente durante o render.
-- Reutilizar templates Remotion e componentes de motion graphics.
-- Medir duração, tamanho e custo de cada etapa antes de abrir o uso.
-- Não prometer custo fixo por vídeo até medir armazenamento, processamento e chamadas de IA.
-
-## Integração com o ChatGPT
-
-O repositório GitHub não se conecta automaticamente a esta conversa. Para o ChatGPT enviar vídeos a este editor e receber o resultado, será necessário um serviço/API acessível com autenticação e uma integração compatível. Manter o projeto sem site público é possível durante o desenvolvimento, mas uma integração remota com o ChatGPT precisará de um endpoint acessível de forma segura quando chegar essa fase.
-
-## Etapas de implementação
-
-1. **Contrato e segurança:** definir estados, formatos do plano, limites e ciclo de vida dos arquivos. (documentado aqui)
-2. **API mínima:** criar trabalhos, autenticar, receber upload e consultar estado.
-3. **Plano com IA:** transformar instruções em JSON validado e apresentar aprovação.
-4. **Render worker:** consumir apenas planos aprovados e gerar MP4 com Remotion.
-5. **Entrega e limpeza:** link temporário, exclusão e expiração automática.
-6. **Integração conversacional:** conectar a API ao ChatGPT quando a base estiver testada.
-
-## Situação atual
-
-O projeto possui uma interface demonstrativa, composições Remotion e um workflow de GitHub Actions que renderiza uma demo. Isso comprova a renderização da composição de demonstração, não o fluxo de edição de vídeos enviados por usuários. Nenhuma etapa de upload privado ou edição automática descrita acima deve ser considerada pronta.
+- Não guardar vídeos, chaves de API ou credenciais no GitHub.
+- Exigir autenticação nas rotas de trabalho.
+- Manter vídeos e resultados fora do repositório, em armazenamento privado.
+- Validar tipo real do arquivo, duração, tamanho e conteúdo antes do processamento.
+- Não executar código produzido pelo modelo. A IA retorna somente JSON limitado pelo schema.
+- Não registrar tokens ou conteúdo privado nos logs.
