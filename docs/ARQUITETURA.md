@@ -36,7 +36,7 @@ Quando o plano contém trechos explícitos para manter e intervalos para remover
 
 ## Interface atual
 
-A interface em `public/` é um protótipo mobile-first: permite selecionar e pré-visualizar um vídeo local e organizar as instruções em um briefing. Ela ainda não envia o arquivo para a API nem mostra o plano de análise. A API e a interface são, portanto, componentes separados nesta etapa.
+A interface em `public/` é um protótipo mobile-first: permite selecionar e pré-visualizar um vídeo local e organizar as instruções em um briefing. Ela ainda não envia o arquivo para a API nem mostra o plano de análise. A integração conversacional está preparada via GPT Actions, com upload por `openaiFileIdRefs`, endpoint de comando incremental e entrega do MP4 por `openaiFileResponse`; requer backend publicado e configuração manual da Action.
 
 As composições Remotion `Main` e `MotionDemo` continuam disponíveis para demonstrações independentes. `EditedVideo` é a composição usada pelo worker após aprovação.
 
@@ -45,9 +45,18 @@ As composições Remotion `Main` e `MotionDemo` continuam disponíveis para demo
 - Hospedar a API em um ambiente persistente com Node.js, FFmpeg, FFprobe e Chromium compatível com Remotion.
 - Configurar `TOP_VIDEO_API_TOKEN` e `OPENAI_API_KEY` como variáveis secretas no servidor.
 - Usar armazenamento privado persistente, expiração e fila durável para recuperar trabalhos após reinícios.
-- Conectar a interface web ou o GPT à API por integração autenticada.
+- Configurar o GPT Action com `openapi.gpt-actions.yaml`, após publicar a API em HTTPS; as instruções estão em `GPT-ACTION-SETUP.md`.
+- A interface web atual ainda não envia vídeos para a API.
 - Automatizar a geração/composição dos assets sugeridos e implementar trilha musical quando houver arquivo ou fonte licenciada.
 - Validar o ciclo completo com vídeos reais e, depois, a entrega do MP4 dentro da experiência conversacional.
+
+## Integração com GPT Actions
+
+- `POST /api/jobs` aceita `openaiFileIdRefs` e busca com segurança o arquivo temporário anexado à conversa.
+- `POST /api/jobs/{id}/command` aplica novos comandos ao plano existente sem iniciar renderização e preserva histórico de comandos.
+- `GET /api/jobs/{id}/file-response` devolve `openaiFileResponse` com link assinado de curta duração; o endpoint `/file` valida a assinatura antes de servir o MP4.
+- A chave Bearer da Action é `TOP_VIDEO_API_TOKEN`; a chave `OPENAI_API_KEY` fica somente no servidor.
+- O contrato está em `openapi.gpt-actions.yaml`; instruções de configuração em `GPT-ACTION-SETUP.md`.
 
 ## Testes
 
