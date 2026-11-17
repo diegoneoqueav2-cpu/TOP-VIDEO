@@ -3,6 +3,7 @@ import multipart from "@fastify/multipart";
 import { randomUUID, timingSafeEqual } from "node:crypto";
 import { mkdir, readFile, writeFile, rm } from "node:fs/promises";
 import path from "node:path";
+import { createReadStream } from "node:fs";
 
 const app = Fastify({ logger: true, bodyLimit: 1024 * 1024 });
 const PORT = Number(process.env.PORT || 8787);
@@ -118,7 +119,7 @@ app.post("/api/jobs", async (request, reply) => {
     status: job.status,
     sizeBytes: job.sizeBytes,
     createdAt,
-    nextStep: "planning_not_connected"
+    nextStep: "analyze"
   });
 });
 
@@ -167,6 +168,83 @@ app.post("/api/jobs/:id/analyze", async (request, reply) => {
       error: "Não foi possível analisar o vídeo.",
       detail: error?.publicMessage || "Verifique FFmpeg, a chave da IA e os limites do arquivo."
     });
+  }
+});
+
+app.post("/api/jobs/:id/approve", async (request, reply) => {
+  const id = request.params.id;
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return reply.code(400).send({ error: "ID inválido." });
+  const jobDir = path.join(STORAGE_DIR, id);
+  let job;
+  try {
+    job = JSON.parse(await readFile(path.join(jobDir, "job.json"), "utf8"));
+  } catch {
+    return reply.code(404).send({ error: "Trabalho não encontrado." });
+  }
+  if (!job.editPlan || !["awaiting_approval", "plan_ready"].includes(job.status)) {
+    return reply.code(409).send({ error: "Não há um plano pronto para aprovação neste trabalho." });
+  }
+  if (job.status === "rendering" || job.status === "completed") {
+    return reply.code(409).send({ error: "Este trabalho já foi enviado para renderização ou concluído." });
+  }
+
+  const approved = {
+    ...job,
+    status: "rendering",
+    approvedAt: new Date().toISOString(),
+    renderStartedAt: new Date().toISOString(),
+    renderError: null
+  };
+  await writeFile(path.join(jobDir, "job.json"), JSON.stringify(approved, null, 2), { mode: 0o600 });
+  reply.code(202).send({ jobId: id, status: "rendering", message: "Plano aprovado. A renderização foi iniciada." });
+
+  setImmediate(async () => {
+    try {
+      const { renderApprovedPlan } = await import("./render-worker.mjs");
+      const outputFile = "final.mp4";
+      const result = await renderApprovedPlan({
+        sourcePath: path.join(jobDir, job.sourceFile),
+        outputPath: path.join(jobDir, outputFile),
+        jobDir,
+        plan: job.editPlan
+      });
+      const latest = JSON.parse(await readFile(path.join(jobDir, "job.json"), "utf8"));
+      await writeFile(path.join(jobDir, "job.json"), JSON.stringify({
+        ...latest,
+        status: "completed",
+        renderCompletedAt: new Date().toISOString(),
+        outputFile,
+        renderResult: result
+      }, null, 2), { mode: 0o600 });
+    } catch (error) {
+      request.log.error({ err: error, jobId: id }, "TOP VIDEO render failed");
+      try {
+        const latest = JSON.parse(await readFile(path.join(jobDir, "job.json"), "utf8"));
+        await writeFile(path.join(jobDir, "job.json"), JSON.stringify({
+          ...latest,
+          status: "render_failed",
+          renderFailedAt: new Date().toISOString(),
+          renderError: error?.publicMessage || error.message || "Falha desconhecida na renderização."
+        }, null, 2), { mode: 0o600 });
+      } catch (writeError) {
+        request.log.error(writeError);
+      }
+    }
+  });
+});
+
+app.get("/api/jobs/:id/download", async (request, reply) => {
+  const id = request.params.id;
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return reply.code(400).send({ error: "ID inválido." });
+  try {
+    const job = JSON.parse(await readFile(path.join(STORAGE_DIR, id, "job.json"), "utf8"));
+    if (job.status !== "completed" || job.outputFile !== "final.mp4") {
+      return reply.code(409).send({ error: "O vídeo final ainda não está disponível." });
+    }
+    const outputPath = path.join(STORAGE_DIR, id, "final.mp4");
+    return reply.type("video/mp4").header("Content-Disposition", 'attachment; filename="TOP-VIDEO-final.mp4"').send(createReadStream(outputPath));
+  } catch {
+    return reply.code(404).send({ error: "Vídeo final ou trabalho não encontrado." });
   }
 });
 
