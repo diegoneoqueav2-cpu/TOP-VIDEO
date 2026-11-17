@@ -1,23 +1,33 @@
 # TOP VIDEO
 
-Primeira base do editor de vídeos com IA, usando Remotion.
+Projeto inicial do editor inteligente de vídeos, construído com Remotion e uma interface web responsiva.
 
-## Objetivo
+## O que já existe
 
-Receber um vídeo gravado no celular e instruções em linguagem natural, preparar um plano de edição, renderizar com Remotion e devolver um MP4 para download.
-
-## Estrutura inicial
-
-- Remotion para compor e renderizar vídeos.
+- Base Remotion para composição e renderização de vídeo.
 - Composição vertical 1080x1920 a 30 fps.
-- Camada inicial para vídeo, título e subtítulo.
-- Próximas etapas: upload, interpretação das instruções por IA, renderização na nuvem e página de conversa.
+- Interface web em português, adaptada para celular.
+- Seleção de vídeo com pré-visualização local no navegador.
+- Campo para instruções de edição, formato de saída e modo de aprovação.
+- Organização local do briefing para revisão.
 
-## Executar em ambiente Node.js
+## O que ainda falta
+
+- Envio seguro do vídeo para um servidor.
+- Integração com IA para interpretar as instruções e propor um plano real.
+- Serviço de renderização Remotion na nuvem.
+- Armazenamento temporário e entrega do MP4 final por link.
+- Autenticação, limites de tamanho e proteção dos arquivos.
+
+## Pré-visualização da interface
+
+A interface está em `public/`. O arquivo `vercel.json` está configurado para publicar essa pasta como site estático.
+
+Para rodar a composição Remotion em ambiente Node.js:
 
 ```bash
 npm install
 npm run dev
 ```
 
-Esta é apenas a base inicial. Ainda não está publicada, não recebe uploads e não está conectada a um modelo de IA.
+**Importante:** a interface atual é um protótipo. O vídeo selecionado fica apenas no navegador; ainda não é enviado nem editado por IA.
