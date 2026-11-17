@@ -219,7 +219,7 @@ app.post("/api/jobs/:id/command", async (request, reply) => {
     const combinedInstruction = [job.instruction, ...commandHistory.map((entry, index) => "Comando adicional " + (index + 1) + ": " + entry.instruction)].join("\n\n");
     const result = await analyzeVideo({
       sourcePath: path.join(jobDir, job.sourceFile),
-      instruction: combinedInstruction,
+      instruction: command,
       aspectRatio: job.aspectRatio,
       schemaPath: path.resolve("schemas/edit-plan.schema.json"),
       apiKey: process.env.OPENAI_API_KEY,
