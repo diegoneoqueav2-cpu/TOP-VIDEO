@@ -34,3 +34,28 @@ test("impede plano que elimina todo o vídeo", () => {
     { type: "remove", startSeconds: 0, endSeconds: 10 }
   ], 10), /removeu todo o vídeo/);
 });
+
+
+test("aplica remoções mesmo quando há trechos keep explícitos", () => {
+  assert.deepEqual(buildKeptSegments([
+    { type: "keep", startSeconds: 0, endSeconds: 10 },
+    { type: "remove", startSeconds: 3, endSeconds: 5 }
+  ], 10), [
+    { sourceStart: 0, sourceEnd: 3, outputStart: 0 },
+    { sourceStart: 5, sourceEnd: 10, outputStart: 3 }
+  ]);
+});
+
+test("subtrai remoções de vários trechos mantidos e recalcula a linha do tempo", () => {
+  assert.deepEqual(buildKeptSegments([
+    { type: "keep", startSeconds: 0, endSeconds: 4 },
+    { type: "trim", startSeconds: 6, endSeconds: 10 },
+    { type: "remove", startSeconds: 1, endSeconds: 2 },
+    { type: "remove", startSeconds: 7, endSeconds: 8 }
+  ], 10), [
+    { sourceStart: 0, sourceEnd: 1, outputStart: 0 },
+    { sourceStart: 2, sourceEnd: 4, outputStart: 1 },
+    { sourceStart: 6, sourceEnd: 7, outputStart: 3 },
+    { sourceStart: 8, sourceEnd: 10, outputStart: 4 }
+  ]);
+});
