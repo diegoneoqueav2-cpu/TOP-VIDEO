@@ -142,7 +142,7 @@ app.post("/api/jobs", async (request, reply) => {
   const ext = ({ "video/mp4": ".mp4", "video/quicktime": ".mov", "video/webm": ".webm", "video/x-matroska": ".mkv" })[mimeType];
   const sourcePath = path.join(jobDir, "source" + ext);
   const createdAt = new Date().toISOString();
-  const job = { id, status: "uploaded", originalName, mimeType, sizeBytes: videoBuffer.length, instruction, aspectRatio, approvalRequired, createdAt, sourceFile: path.basename(sourcePath), note: "Vídeo recebido. Execute a rota de análise para a IA interpretar o conteúdo e preparar um plano para aprovação." };
+  const job = { id, status: "uploaded", originalName, mimeType, sizeBytes: videoBuffer.length, instruction, aspectRatio, approvalRequired, createdAt, sourceFile: path.basename(sourcePath), note: "Vídeo recebido. Envie um plano criado pelo ChatGPT em /api/jobs/:id/plan para validar e aguardar aprovação." };
   try {
     await writeFile(sourcePath, videoBuffer, { flag: "wx", mode: 0o600 });
     await writeFile(path.join(jobDir, "job.json"), JSON.stringify(job, null, 2), { mode: 0o600 });
