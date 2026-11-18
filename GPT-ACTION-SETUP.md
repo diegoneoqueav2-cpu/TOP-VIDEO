@@ -1,45 +1,63 @@
-# Conectar o TOP VIDEO a um GPT personalizado
+# TOP VIDEO — conexão com ChatGPT sem API paga
 
-## Estado
+## O que este fluxo faz
 
-Este repositório agora contém o contrato OpenAPI e os endpoints necessários para uma Action conversacional. Isso não publica a API nem cria/edita automaticamente um GPT na conta do usuário.
+O ChatGPT atua como diretor/editor: interpreta o vídeo anexado à conversa, cria o plano híbrido de edição e pode revisar esse plano quando o usuário pedir alterações. O backend TOP VIDEO recebe o vídeo e o plano, valida o JSON e executa o render com FFmpeg + Remotion.
 
-## Preparar o servidor
+**Neste caminho, o backend não chama a API da OpenAI.** Não configure OPENAI_API_KEY para usar a operação submitEditPlan. A rota antiga /analyze continua disponível como alternativa opcional paga, mas não faz parte desta Action.
 
-Hospede o projeto em um serviço HTTPS que suporte Node.js 22, FFmpeg, FFprobe, Chromium e Remotion. Configure no ambiente do servidor:
+## O que ainda exige infraestrutura
 
-- `TOP_VIDEO_API_TOKEN`: segredo aleatório com pelo menos 24 caracteres.
-- `OPENAI_API_KEY`: chave da API OpenAI usada pelo motor de análise.
-- `TOP_VIDEO_PUBLIC_URL`: URL HTTPS pública exata da API, sem barra final.
-- `TOP_VIDEO_STORAGE`: diretório de armazenamento persistente e privado.
-- Opcional: `OPENAI_VISION_MODEL`.
+- Um backend HTTPS com Node.js 22, FFmpeg, FFprobe, Chromium e Remotion.
+- Um diretório de armazenamento privado e persistente.
+- TOP_VIDEO_API_TOKEN como segredo Bearer com pelo menos 24 caracteres.
+- TOP_VIDEO_PUBLIC_URL com o endereço HTTPS real do backend.
+- Hospedagem e processamento podem gerar custos. O fluxo elimina a cobrança por chamada de API de IA no backend, mas não elimina automaticamente custos de renderização, tráfego ou armazenamento.
 
-Não coloque essas chaves no GitHub, no navegador ou nas instruções do GPT. A assinatura do GPT Action e a chave OpenAI usada pelo servidor são credenciais diferentes.
+Não publique um servidor pago nem habilite recursos cobrados sem revisar e autorizar os custos. Não coloque segredos no GitHub, no site estático ou nas instruções do GPT.
 
-## Criar a Action
+## Configurar uma Action
 
 1. Abra o editor de GPTs e crie ou edite o GPT TOP VIDEO.
-2. Em **Actions**, escolha **Create new action**.
-3. Cole o conteúdo de `openapi.gpt-actions.yaml`.
-4. Troque `https://YOUR-TOP-VIDEO-DOMAIN` pelo domínio HTTPS real do servidor publicado.
-5. Configure Authentication como **API Key → Bearer** e use o valor de `TOP_VIDEO_API_TOKEN`.
-6. Salve e teste as operações.
+2. Em **Actions**, crie uma nova Action.
+3. Cole o conteúdo de openapi.gpt-actions.yaml.
+4. Substitua https://YOUR-TOP-VIDEO-DOMAIN pela URL HTTPS real do backend implantado.
+5. Configure autenticação **API Key → Bearer** com o valor de TOP_VIDEO_API_TOKEN.
+6. Salve e teste as operações depois que o backend estiver publicado.
 
-## Instruções para o GPT
+A Action não pode funcionar enquanto o domínio HTTPS real não estiver configurado e o backend não estiver online. A configuração do GPT/Action na conta também precisa ser feita pelo titular da conta.
 
-Cole este texto nas instruções do GPT:
+## Instruções para o GPT TOP VIDEO
 
-> Você é o diretor de edição do TOP VIDEO. Converse em português do Brasil. Quando o usuário anexar um vídeo e pedir uma edição, pergunte somente o que estiver faltando. Chame createVideoJob enviando a referência do vídeo anexado em openaiFileIdRefs, o briefing, o formato e approvalRequired=true. Em seguida chame analyzeVideo com o jobId retornado. Explique a análise e apresente o plano de forma clara. Não aprove nem renderize sem aprovação explícita do usuário.
+Cole nas instruções do GPT:
+
+> Você é o diretor de edição híbrida do TOP VIDEO. Converse em português brasileiro. Preserve a filmagem original, use motion graphics 2D limpos, elementos 3D apenas quando fizerem sentido, paleta verde/branco e destaques amarelos. Legendas devem ser fiéis ao áudio; não invente falas.
 >
-> Enquanto o plano estiver aguardando aprovação, trate cada novo pedido do usuário como um comando de revisão e chame reviseVideoPlan com o mesmo jobId e apenas o novo comando. Mostre o plano atualizado e aguarde nova aprovação. Não crie um novo trabalho para cada ajuste.
+> Quando o usuário anexar um vídeo e pedir edição, primeiro confirme se o vídeo está realmente acessível e se você consegue analisar seu conteúdo nesta conversa. Não afirme ter visto o vídeo se não conseguir acessá-lo. Se não conseguir inspecionar o vídeo, peça um arquivo compatível ou quadros/trechos de referência; nunca invente cenas.
 >
-> Só depois de o usuário dizer claramente que aprova, chame approveVideoRender. Consulte getVideoJob periodicamente até status=completed ou render_failed. Quando completed, chame getRenderedVideoDownload e apresente o downloadUrl como link para baixar o MP4. Avise que o link expira em dez minutos; GPT Actions não anexa vídeos diretamente à conversa. Se falhar, explique o erro sem afirmar que o vídeo foi entregue.
+> Quando conseguir analisar o vídeo, chame createVideoJob com a referência do arquivo anexado em openaiFileIdRefs, a instrução, o formato e approvalRequired=true. Use o jobId retornado. Crie você mesmo um editPlan JSON completo conforme o schema do repositório: version=1, aspectRatio igual ao formato enviado, fps, source.durationSeconds, edits, captions, graphics, audio, mode=hybrid, analysis.summary, analysis.scenes e assetSuggestions. Use tempos conservadores e dentro da duração real. Não invente transcrição.
 >
-> Nunca invente análise, progresso, disponibilidade ou conclusão. Preserve o vídeo original e as decisões do plano que não conflitem com os comandos novos. Não revele tokens, URLs assinadas ou segredos.
+> Envie o plano por submitEditPlan. O servidor valida schema, proporção e tempos com FFprobe; essa operação não usa a API da OpenAI. Apresente ao usuário um resumo do plano e aguarde aprovação explícita. Se o usuário pedir mudanças, atualize o plano completo e chame submitEditPlan novamente com o mesmo jobId. Não aprove por conta própria.
+>
+> Só depois de o usuário aprovar claramente, chame approveVideoRender. Consulte getVideoJob até completed ou render_failed. Quando completed, chame getRenderedVideoDownload e apresente o downloadUrl como link para baixar o MP4. O link expira em dez minutos. Não diga que terminou antes do status completed.
+>
+> Nunca revele tokens ou links assinados. Não afirme que sugestões de assets 2D/3D foram geradas se o renderizador não as compôs; o motor atual executa os tipos de gráficos suportados pelo schema.
 
 ## Limites conhecidos
 
-- A API ainda usa execução em segundo plano no processo e armazenamento local; reiniciar o servidor pode interromper trabalhos. Para produção, adicione fila persistente e armazenamento privado durável.
-- A análise visual usa até 20 quadros amostrados e transcrição; não é uma leitura de todos os frames.
-- Os assets sugeridos (ilustrações, imagens e 3D) ainda não são gerados automaticamente; Remotion aplica os gráficos textuais suportados atualmente.
-- O MP4 final é entregue por um link HTTPS assinado de dez minutos. A documentação de GPT Actions não permite devolver arquivos de vídeo como anexos da conversa; o GPT apresenta o link para o usuário abrir e baixar o MP4.
+- A análise feita pelo ChatGPT depende dos recursos de leitura de vídeo disponíveis no modelo e na interface. Não é garantido que toda duração, áudio ou todos os frames sejam interpretados. Se a análise não for possível, não invente.
+- A validação do backend confirma a estrutura e os tempos do plano, mas não garante que o plano editorial esteja correto.
+- O motor atual renderiza cortes, enquadramento, áudio básico, legendas e gráficos textuais suportados. Sugestões de imagens, ilustrações e objetos 3D não viram automaticamente assets renderizáveis.
+- A execução atual usa processo em segundo plano e armazenamento local. Um reinício pode interromper trabalhos; antes de produção é necessário validar fila, persistência, expiração e privacidade.
+- GPT Actions devolvem link de download, não um vídeo MP4 anexado diretamente à conversa.
+- A página GitHub Pages é somente uma demonstração estática; não recebe nem processa vídeos e não deve guardar tokens.
+
+## Fluxo de teste
+
+1. Implantar o backend em infraestrutura revisada e autorizada.
+2. Configurar os segredos no painel privado do provedor.
+3. Criar a Action com o OpenAPI acima.
+4. Anexar um vídeo curto ao GPT TOP VIDEO.
+5. Confirmar que o GPT consegue analisar o conteúdo antes de gerar o plano.
+6. Enviar o plano, revisar e aprovar.
+7. Renderizar e baixar o MP4.
