@@ -152,3 +152,8 @@ Após a aprovação, o worker agora executa o seguinte fluxo:
 4. Os arquivos temporários do bundle são removidos após a renderização bem-sucedida.
 
 A dependência `@remotion/bundler` foi adicionada para permitir o bundle no servidor. **Esta alteração no código não significa que o serviço já esteja hospedado ou que a renderização tenha sido validada em produção.** O próximo teste precisa executar uma renderização real com FFmpeg, Chromium e um vídeo de teste válido.
+
+
+## Publicação do backend em nuvem
+
+O backend agora tem um `Dockerfile` com Node.js, FFmpeg/FFprobe e Chromium para Remotion, além de um blueprint de implantação no Render. Consulte [docs/IMPLANTACAO-BACKEND.md](docs/IMPLANTACAO-BACKEND.md) antes de criar o serviço. O blueprint utiliza instância paga e disco persistente; confira os custos antes de confirmar. A página GitHub Pages continua sendo apenas uma demonstração e não recebe nem processa vídeos.
