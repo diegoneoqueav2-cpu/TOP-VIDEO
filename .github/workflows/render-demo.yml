@@ -27,10 +27,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
 
       - name: Instalar dependências do TOP VIDEO
-        run: npm ci
+        run: npm install
 
       - name: Preparar navegador do Remotion
         run: npx remotion browser ensure
