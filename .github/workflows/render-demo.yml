@@ -2,6 +2,14 @@ name: Gerar história da Vaca Vitória — TOP VIDEO
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/render-demo.yml"
+      - "src/CowStory.tsx"
+      - "src/Root.tsx"
+      - "src/index.ts"
+      - "package.json"
+      - "package-lock.json"
 
 permissions:
   contents: read
