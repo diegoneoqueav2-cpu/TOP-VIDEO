@@ -3,10 +3,20 @@ import { execFileSync } from "node:child_process";
 
 const dir = "public/audio";
 await mkdir(dir, { recursive: true });
-execFileSync("espeak-ng", [
-  "-v", "pt-br", "-s", "142", "-p", "48", "-a", "185",
-  "-w", `${dir}/vaca-vitoria-narracao.wav`,
-  "Era uma vez uma vaca Vitória... Soltou um peido! ... Acabou a história!"
+
+const phrases = [
+  { file: "fala-1.wav", text: "Era uma vez uma vaca Vitória." },
+  { file: "fala-2.wav", text: "Soltou um peido!" },
+  { file: "fala-3.wav", text: "Acabou a história!" },
+];
+for (const phrase of phrases) {
+  execFileSync("espeak-ng", ["-v","pt-br","-s","142","-p","48","-a","185","-w",`${dir}/${phrase.file}`,phrase.text]);
+}
+execFileSync("ffmpeg", [
+  "-y","-i",`${dir}/fala-1.wav`,"-i",`${dir}/fala-2.wav`,"-i",`${dir}/fala-3.wav`,
+  "-filter_complex",
+  "[0:a]adelay=0|0[a0];[1:a]adelay=5900|5900[a1];[2:a]adelay=9300|9300[a2];[a0][a1][a2]amix=inputs=3:duration=longest:normalize=0[a]",
+  "-map","[a]","-t","12","-ac","1","-ar","44100",`${dir}/vaca-vitoria-narracao.wav`
 ]);
 
 // Trilha instrumental original, alegre e simples, sintetizada em PCM WAV.
@@ -33,4 +43,4 @@ header.writeUInt32LE(rate,24); header.writeUInt32LE(rate*2,28);
 header.writeUInt16LE(2,32); header.writeUInt16LE(16,34);
 header.write("data",36); header.writeUInt32LE(samples.length*2,40);
 await writeFile(`${dir}/vaca-vitoria-musica.wav`, Buffer.concat([header,Buffer.from(samples.buffer)]));
-console.log("Áudios da Vaca Vitória criados.");
+console.log("Narração sincronizada e trilha da Vaca Vitória criadas.");
