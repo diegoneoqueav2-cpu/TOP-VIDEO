@@ -1,25 +1,25 @@
 openapi: 3.1.0
 info:
-  title: TOP VIDEO Conversational Editor API
-  version: 1.0.0
+  title: TOP VIDEO — Editor conversacional
+  version: 1.1.0
   description: >
-    API privada do TOP VIDEO para receber vídeos anexados à conversa,
-    analisar o conteúdo, revisar o plano por comandos em linguagem natural,
-    aguardar aprovação humana, renderizar e devolver o MP4.
+    Recebe um vídeo anexado à conversa, aceita um plano criado pelo próprio ChatGPT
+    sem chamar a API da OpenAI, valida os tempos contra o arquivo original e renderiza
+    somente após aprovação explícita.
 servers:
   - url: https://YOUR-TOP-VIDEO-DOMAIN
-    description: Substitua pelo domínio HTTPS público do servidor TOP VIDEO.
+    description: Substitua pelo domínio HTTPS real do backend TOP VIDEO.
 security:
   - BearerAuth: []
 paths:
   /api/jobs:
     post:
       operationId: createVideoJob
-      summary: Enviar vídeo e instruções ao TOP VIDEO
+      summary: Enviar o vídeo para o motor TOP VIDEO
       description: >
         Envie exatamente um vídeo anexado nesta conversa. O ChatGPT preenche
-        openaiFileIdRefs com a referência do arquivo; não peça ao usuário um link
-        manual. Formatos aceitos: MP4, MOV, WebM ou MKV, até 100 MB.
+        openaiFileIdRefs com a referência do arquivo. O backend apenas recebe e
+        armazena temporariamente o vídeo; não chama nenhuma API de IA nesta operação.
       requestBody:
         required: true
         content:
@@ -30,29 +30,19 @@ paths:
               properties:
                 openaiFileIdRefs:
                   type: array
-                  description: Arquivo de vídeo anexado pelo usuário nesta conversa do ChatGPT.
+                  minItems: 1
+                  maxItems: 1
                   items:
                     type: object
-                    description: Referência de arquivo fornecida automaticamente pelo ChatGPT.
                     required: [download_link, mime_type]
                     properties:
-                      name:
-                        type: string
-                      id:
-                        type: string
+                      name: { type: string }
+                      id: { type: string }
                       mime_type:
                         type: string
                         enum: [video/mp4, video/quicktime, video/webm, video/x-matroska]
-                      download_link:
-                        type: string
-                        format: uri
-                        description: Link temporário HTTPS do arquivo anexado nesta conversa.
-                  minItems: 1
-                  maxItems: 1
-                instruction:
-                  type: string
-                  maxLength: 4000
-                  description: Briefing inicial em linguagem natural.
+                      download_link: { type: string, format: uri }
+                instruction: { type: string, maxLength: 4000 }
                 aspectRatio:
                   type: string
                   enum: ["9:16", "16:9", "1:1"]
@@ -62,48 +52,28 @@ paths:
                   default: true
       responses:
         "201":
-          description: Vídeo recebido. Guarde jobId para as próximas operações.
+          description: Vídeo recebido. Guarde jobId.
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  jobId: { type: string }
+                  jobId: { type: string, format: uuid }
                   status: { type: string, example: uploaded }
-                  nextStep: { type: string, example: analyze }
+                  nextStep: { type: string, example: submitEditPlan }
         "400": { description: Arquivo ou briefing inválido. }
         "401": { description: Token inválido. }
         "413": { description: Vídeo acima de 100 MB. }
         "415": { description: Formato não aceito. }
-  /api/jobs/{id}/analyze:
+  /api/jobs/{id}/plan:
     post:
-      operationId: analyzeVideo
-      summary: Analisar vídeo e criar plano de edição
-      description: A IA interpreta quadros e áudio e devolve um plano para aprovação; não renderiza nesta etapa.
-      parameters:
-        - $ref: "#/components/parameters/JobId"
-      responses:
-        "200":
-          description: Análise e plano de edição.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  jobId: { type: string }
-                  status: { type: string }
-                  transcript: { type: string }
-                  editPlan: { type: object, additionalProperties: true }
-        "503": { description: Chave da IA não configurada. }
-        "422": { description: Não foi possível analisar o vídeo. }
-  /api/jobs/{id}/command:
-    post:
-      operationId: reviseVideoPlan
-      summary: Aplicar novo comando conversacional ao plano
+      operationId: submitEditPlan
+      summary: Enviar plano de edição criado pelo ChatGPT
       description: >
-        Reinterpreta o vídeo com o plano anterior como contexto e aplica a nova
-        instrução sem perder as decisões que não conflitam. O plano atualizado
-        volta para aprovação humana; nunca inicia renderização.
+        Use depois de analisar o vídeo na própria conversa. Envie um objeto editPlan
+        completo no formato do schema TOP VIDEO. O servidor valida o schema, a proporção
+        e todos os tempos com FFprobe. Não há chamada à API da OpenAI nem cobrança de API
+        nesta operação. O plano fica aguardando aprovação humana.
       parameters:
         - $ref: "#/components/parameters/JobId"
       requestBody:
@@ -112,36 +82,42 @@ paths:
           application/json:
             schema:
               type: object
-              required: [instruction]
+              required: [editPlan]
               properties:
-                instruction:
+                editPlan:
+                  type: object
+                  description: >
+                    Plano híbrido completo: version=1; mode=hybrid; aspectRatio igual ao
+                    formato escolhido; fps=24|25|30|60; source.durationSeconds; analysis.summary
+                    e analysis.scenes; edits; captions; graphics; audio; assetSuggestions.
+                  additionalProperties: true
+                transcript:
                   type: string
-                  maxLength: 4000
-                  description: Novo comando do usuário, por exemplo "deixe as legendas maiores e remova o zoom".
+                  maxLength: 30000
       responses:
         "200":
-          description: Plano revisado e aguardando aprovação.
+          description: Plano validado e aguardando aprovação.
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  jobId: { type: string }
-                  status: { type: string }
+                  jobId: { type: string, format: uuid }
+                  status: { type: string, example: awaiting_approval }
                   analysisRevision: { type: integer }
-                  appliedCommand: { type: string }
+                  validation: { type: string }
                   editPlan: { type: object, additionalProperties: true }
-        "409": { description: Trabalho não está aguardando aprovação. }
-        "503": { description: Chave da IA não configurada. }
+        "409": { description: Trabalho em estado que não aceita plano. }
+        "422": { description: Plano inválido, fora do schema ou com tempos incompatíveis. }
   /api/jobs/{id}:
     get:
       operationId: getVideoJob
-      summary: Consultar análise ou renderização
+      summary: Consultar estado do trabalho
       parameters:
         - $ref: "#/components/parameters/JobId"
       responses:
         "200":
-          description: Estado atual do trabalho.
+          description: Estado atual.
           content:
             application/json:
               schema:
@@ -163,21 +139,18 @@ paths:
               schema:
                 type: object
                 properties:
-                  jobId: { type: string }
+                  jobId: { type: string, format: uuid }
                   status: { type: string, example: rendering }
         "409": { description: Não existe plano pronto para aprovação. }
   /api/jobs/{id}/file-response:
     get:
       operationId: getRenderedVideoDownload
-      summary: Entregar o MP4 final à conversa
-      description: >
-        Depois de o trabalho ficar completed, retorna um link HTTPS assinado e
-        temporário para o usuário baixar o MP4. GPT Actions não anexa arquivos de vídeo à conversa.
+      summary: Obter link temporário do MP4 final
       parameters:
         - $ref: "#/components/parameters/JobId"
       responses:
         "200":
-          description: Arquivo MP4 final para anexar à conversa.
+          description: Link HTTPS assinado de download.
           content:
             application/json:
               schema:
@@ -188,7 +161,7 @@ paths:
                   fileName: { type: string }
                   mimeType: { type: string, example: video/mp4 }
         "409": { description: Renderização ainda não terminou. }
-        "503": { description: TOP_VIDEO_PUBLIC_URL não configurada. }
+        "503": { description: URL pública do backend não configurada. }
 components:
   securitySchemes:
     BearerAuth:
