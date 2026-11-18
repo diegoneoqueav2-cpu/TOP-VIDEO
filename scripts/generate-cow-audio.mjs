@@ -4,22 +4,35 @@ import { execFileSync } from "node:child_process";
 const dir = "public/audio";
 await mkdir(dir, { recursive: true });
 
+// Voz neural pt-BR do Edge TTS: timbre conversacional, ritmo e entonação naturais.
+// O workflow instala edge-tts; FFmpeg converte e sincroniza as falas no vídeo.
 const phrases = [
-  { file: "fala-1.wav", text: "Era uma vez uma vaca Vitória." },
-  { file: "fala-2.wav", text: "Soltou um peido!" },
-  { file: "fala-3.wav", text: "Acabou a história!" },
+  { file: "fala-1.mp3", text: "Era uma vez uma vaca Vitória." },
+  { file: "fala-2.mp3", text: "Soltou um peido!" },
+  { file: "fala-3.mp3", text: "Acabou a história!" },
 ];
 for (const phrase of phrases) {
-  execFileSync("espeak-ng", ["-v","pt-br","-s","142","-p","48","-a","185","-w",`${dir}/${phrase.file}`,phrase.text]);
+  execFileSync("python3", [
+    "-m", "edge_tts",
+    "--voice", "pt-BR-FranciscaNeural",
+    "--rate", "+2%",
+    "--pitch", "+0Hz",
+    "--text", phrase.text,
+    "--write-media", `${dir}/${phrase.file}`,
+  ]);
 }
 execFileSync("ffmpeg", [
-  "-y","-i",`${dir}/fala-1.wav`,"-i",`${dir}/fala-2.wav`,"-i",`${dir}/fala-3.wav`,
+  "-y",
+  "-i", `${dir}/fala-1.mp3`,
+  "-i", `${dir}/fala-2.mp3`,
+  "-i", `${dir}/fala-3.mp3`,
   "-filter_complex",
-  "[0:a]adelay=0|0[a0];[1:a]adelay=5900|5900[a1];[2:a]adelay=9300|9300[a2];[a0][a1][a2]amix=inputs=3:duration=longest:normalize=0[a]",
-  "-map","[a]","-t","12","-ac","1","-ar","44100",`${dir}/vaca-vitoria-narracao.wav`
+  "[0:a]adelay=0|0,volume=1.18[a0];[1:a]adelay=5900|5900,volume=1.18[a1];[2:a]adelay=9300|9300,volume=1.18[a2];[a0][a1][a2]amix=inputs=3:duration=longest:normalize=0,alimiter=limit=0.95[a]",
+  "-map", "[a]", "-t", "12", "-ac", "2", "-ar", "44100",
+  `${dir}/vaca-vitoria-narracao.wav`,
 ]);
 
-// Trilha instrumental original, alegre e simples, sintetizada em PCM WAV.
+// Trilha instrumental original, alegre e discreta.
 const rate = 44100;
 const seconds = 12;
 const samples = new Int16Array(rate * seconds);
@@ -33,7 +46,7 @@ for (let i=0; i<samples.length; i++) {
   const melody=Math.sin(2*Math.PI*notes[noteIndex]*t);
   const bass=Math.sin(2*Math.PI*(notes[noteIndex]/2)*t)*0.35;
   const pluck=Math.sin(2*Math.PI*notes[noteIndex]*2*t)*0.12;
-  samples[i]=Math.max(-32768,Math.min(32767,(melody+bass+pluck)*envelope*3600));
+  samples[i]=Math.max(-32768,Math.min(32767,(melody+bass+pluck)*envelope*2500));
 }
 const header=Buffer.alloc(44);
 header.write("RIFF",0); header.writeUInt32LE(36+samples.length*2,4);
@@ -43,4 +56,4 @@ header.writeUInt32LE(rate,24); header.writeUInt32LE(rate*2,28);
 header.writeUInt16LE(2,32); header.writeUInt16LE(16,34);
 header.write("data",36); header.writeUInt32LE(samples.length*2,40);
 await writeFile(`${dir}/vaca-vitoria-musica.wav`, Buffer.concat([header,Buffer.from(samples.buffer)]));
-console.log("Narração sincronizada e trilha da Vaca Vitória criadas.");
+console.log("Narração neural pt-BR e trilha original da Vaca Vitória criadas.");
