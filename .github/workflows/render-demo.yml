@@ -8,6 +8,7 @@ on:
       - "src/CowStory.tsx"
       - "src/Root.tsx"
       - "src/index.ts"
+      - "scripts/generate-cow-audio.mjs"
       - "package.json"
       - "package-lock.json"
 
@@ -29,6 +30,12 @@ jobs:
 
       - name: Instalar dependências
         run: npm install
+
+      - name: Instalar voz em português e FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y espeak-ng ffmpeg
+
+      - name: Gerar narração e trilha musical
+        run: node scripts/generate-cow-audio.mjs
 
       - name: Renderizar vídeo de demonstração
         run: npx remotion render src/index.ts CowStory out/vaca-vitoria.mp4
