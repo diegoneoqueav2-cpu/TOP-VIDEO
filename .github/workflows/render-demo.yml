@@ -28,16 +28,16 @@ jobs:
         with:
           node-version: 20
 
-      - name: Instalar dependências
-        run: npm install
+      - name: Preparar voz neural e FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg python3-pip
+          python3 -m pip install --break-system-packages edge-tts
 
-      - name: Instalar voz em português e FFmpeg
-        run: sudo apt-get update && sudo apt-get install -y espeak-ng ffmpeg
-
-      - name: Gerar narração e trilha musical
+      - name: Gerar narração humana neural e trilha
         run: node scripts/generate-cow-audio.mjs
 
-      - name: Renderizar vídeo de demonstração
+      - name: Renderizar vídeo vertical 1080x1920
         run: npx remotion render src/index.ts CowStory out/vaca-vitoria.mp4
 
       - name: Disponibilizar MP4 para baixar
