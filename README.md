@@ -30,6 +30,7 @@ A composição `MotionDemo` tem 6 segundos, formato vertical 1080x1920 e 30 fps.
 - Conectar a interface web atual à API (ela ainda apenas pré-visualiza o vídeo e organiza o briefing).
 - Publicar a API em um servidor com FFmpeg, FFprobe, Chromium e dependências do Remotion.
 - Conectar o GPT à API hospedada por uma Action autenticada.
+- **Novo caminho sem API paga:** o próprio ChatGPT cria o plano e envia para POST /api/jobs/:id/plan; o backend valida o schema e os tempos com FFprobe, sem OPENAI_API_KEY. Veja GPT-ACTION-SETUP.md.
 - Adicionar fila persistente, armazenamento privado com expiração e recuperação de trabalhos após reinícios.
 - Automatizar a geração e composição dos assets visuais sugeridos pela IA (imagens, ilustrações e objetos 3D).
 - Adicionar trilha musical separada e validar redução de ruído em gravações reais.
@@ -157,3 +158,10 @@ A dependência `@remotion/bundler` foi adicionada para permitir o bundle no serv
 ## Publicação do backend em nuvem
 
 O backend agora tem um `Dockerfile` com Node.js, FFmpeg/FFprobe e Chromium para Remotion, além de um blueprint de implantação no Render. Consulte [docs/IMPLANTACAO-BACKEND.md](docs/IMPLANTACAO-BACKEND.md) antes de criar o serviço. O blueprint utiliza instância paga e disco persistente; confira os custos antes de confirmar. A página GitHub Pages continua sendo apenas uma demonstração e não recebe nem processa vídeos.
+
+
+## Fluxo econômico sem API de IA
+
+O endpoint POST /api/jobs/:id/plan permite que o ChatGPT da conversa produza o plano de edição e o envie ao backend. O servidor valida o JSON com o schema, confere proporção e tempos reais com FFprobe e guarda o plano para aprovação. Esse fluxo não chama a API da OpenAI e não exige OPENAI_API_KEY. O endpoint antigo /analyze permanece opcional para quem quiser análise automatizada via API paga.
+
+A Action atualizada está em openapi.gpt-actions.yaml; as instruções estão em GPT-ACTION-SETUP.md. Isso prepara a integração no código, mas não cria a Action na conta do usuário nem publica o backend. A hospedagem e a renderização ainda podem gerar custos. A página GitHub Pages continua sendo uma demonstração estática, não um editor conectado.

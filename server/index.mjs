@@ -4,6 +4,7 @@ import { randomUUID, timingSafeEqual, createHmac } from "node:crypto";
 import { mkdir, readFile, writeFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { createReadStream } from "node:fs";
+import { validateEditPlan } from "./edit-plan-validation.mjs";
 
 const app = Fastify({ logger: true, bodyLimit: 1024 * 1024 });
 const PORT = Number(process.env.PORT || 8787);
@@ -141,7 +142,7 @@ app.post("/api/jobs", async (request, reply) => {
   const ext = ({ "video/mp4": ".mp4", "video/quicktime": ".mov", "video/webm": ".webm", "video/x-matroska": ".mkv" })[mimeType];
   const sourcePath = path.join(jobDir, "source" + ext);
   const createdAt = new Date().toISOString();
-  const job = { id, status: "uploaded", originalName, mimeType, sizeBytes: videoBuffer.length, instruction, aspectRatio, approvalRequired, createdAt, sourceFile: path.basename(sourcePath), note: "Vídeo recebido. Execute a rota de análise para a IA interpretar o conteúdo e preparar um plano para aprovação." };
+  const job = { id, status: "uploaded", originalName, mimeType, sizeBytes: videoBuffer.length, instruction, aspectRatio, approvalRequired, createdAt, sourceFile: path.basename(sourcePath), note: "Vídeo recebido. Envie um plano criado pelo ChatGPT em /api/jobs/:id/plan para validar e aguardar aprovação." };
   try {
     await writeFile(sourcePath, videoBuffer, { flag: "wx", mode: 0o600 });
     await writeFile(path.join(jobDir, "job.json"), JSON.stringify(job, null, 2), { mode: 0o600 });
@@ -149,7 +150,69 @@ app.post("/api/jobs", async (request, reply) => {
     await rm(jobDir, { recursive: true, force: true });
     throw error;
   }
-  return reply.code(201).send({ jobId: id, status: job.status, sizeBytes: job.sizeBytes, createdAt, nextStep: "analyze" });
+  return reply.code(201).send({ jobId: id, status: job.status, sizeBytes: job.sizeBytes, createdAt, nextStep: "submitEditPlan" });
+});
+
+
+app.post("/api/jobs/:id/plan", async (request, reply) => {
+  const id = request.params.id;
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return reply.code(400).send({ error: "ID inválido." });
+  const jobDir = path.join(STORAGE_DIR, id);
+  let job;
+  try {
+    job = JSON.parse(await readFile(path.join(jobDir, "job.json"), "utf8"));
+  } catch {
+    return reply.code(404).send({ error: "Trabalho não encontrado." });
+  }
+  if (!["uploaded", "awaiting_approval", "plan_ready"].includes(job.status)) {
+    return reply.code(409).send({ error: "Este trabalho não aceita um novo plano neste estado." });
+  }
+
+  const editPlan = request.body?.editPlan;
+  const transcript = typeof request.body?.transcript === "string"
+    ? request.body.transcript.slice(0, 30000)
+    : "";
+  try {
+    const validation = await validateEditPlan({
+      editPlan,
+      schemaPath: path.resolve("schemas/edit-plan.schema.json"),
+      sourcePath: path.join(jobDir, job.sourceFile),
+      expectedAspectRatio: job.aspectRatio
+    });
+    const revision = (job.analysisRevision || 0) + 1;
+    const updated = {
+      ...job,
+      status: job.approvalRequired ? "awaiting_approval" : "plan_ready",
+      analysisRevision: revision,
+      analysisCompletedAt: new Date().toISOString(),
+      analysisProvider: "chatgpt-conversation",
+      analysisNotes: {
+        provider: "ChatGPT nesta conversa; sem chamada à API da OpenAI pelo servidor",
+        durationSeconds: validation.durationSeconds,
+        resolution: validation.resolution,
+        fps: validation.fps,
+        humanApprovalRequired: true
+      },
+      transcript,
+      editPlan,
+      analysisWarnings: []
+    };
+    await writeFile(path.join(jobDir, "job.json"), JSON.stringify(updated, null, 2), { mode: 0o600 });
+    await writeFile(path.join(jobDir, "edit-plan.json"), JSON.stringify(editPlan, null, 2), { mode: 0o600 });
+    return {
+      jobId: id,
+      status: updated.status,
+      analysisRevision: revision,
+      analysisProvider: updated.analysisProvider,
+      validation: validation.summary,
+      editPlan
+    };
+  } catch (error) {
+    return reply.code(422).send({
+      error: "O plano de edição foi rejeitado pela validação.",
+      detail: error?.publicMessage || error.message || "Confira o formato e os tempos do plano."
+    });
+  }
 });
 
 
