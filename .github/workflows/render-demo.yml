@@ -1,4 +1,4 @@
-name: Gerar primeiro vídeo TOP VIDEO
+name: Gerar história da Vaca Vitória — TOP VIDEO
 
 on:
   workflow_dispatch:
@@ -23,12 +23,12 @@ jobs:
         run: npm install
 
       - name: Renderizar vídeo de demonstração
-        run: npx remotion render src/index.ts MotionDemo out/top-video-motion-demo.mp4
+        run: npx remotion render src/index.ts CowStory out/vaca-vitoria.mp4
 
       - name: Disponibilizar MP4 para baixar
         uses: actions/upload-artifact@v4
         with:
-          name: top-video-motion-demo
-          path: out/top-video-motion-demo.mp4
+          name: video-vaca-vitoria
+          path: out/vaca-vitoria.mp4
           if-no-files-found: error
           retention-days: 7
