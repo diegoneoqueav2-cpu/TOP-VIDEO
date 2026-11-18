@@ -26,7 +26,14 @@ jobs:
       - name: Preparar Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências do TOP VIDEO
+        run: npm ci
+
+      - name: Preparar navegador do Remotion
+        run: npx remotion browser ensure
 
       - name: Preparar voz neural e FFmpeg
         run: |
