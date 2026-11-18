@@ -32,10 +32,21 @@ paths:
                   type: array
                   description: Arquivo de vídeo anexado pelo usuário nesta conversa do ChatGPT.
                   items:
-                    type: string
-                    description: >
-                      Referência de arquivo fornecida automaticamente pelo ChatGPT.
-                      Em tempo de execução contém name, id, mime_type e download_link.
+                    type: object
+                    description: Referência de arquivo fornecida automaticamente pelo ChatGPT.
+                    required: [download_link, mime_type]
+                    properties:
+                      name:
+                        type: string
+                      id:
+                        type: string
+                      mime_type:
+                        type: string
+                        enum: [video/mp4, video/quicktime, video/webm, video/x-matroska]
+                      download_link:
+                        type: string
+                        format: uri
+                        description: Link temporário HTTPS do arquivo anexado nesta conversa.
                   minItems: 1
                   maxItems: 1
                 instruction:
