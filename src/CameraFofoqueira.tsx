@@ -138,3 +138,5 @@ export const CameraFofoqueira:React.FC=()=>{
   </Sequence>
  </AbsoluteFill>
 };
+
+// Cena promocional renderizada em 9:16 com personagem narradora e cortes animados.
