@@ -1,0 +1,38 @@
+name: Renderizar Camera Fofoqueira MP4
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/CameraFofoqueira.tsx"
+      - "src/Root.tsx"
+      - "scripts/generate-camera-audio.mjs"
+      - ".github/workflows/render-camera-fofoqueira.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npx remotion browser ensure
+      - name: Instalar FFmpeg e Edge TTS
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg python3-pip
+          python3 -m pip install --break-system-packages edge-tts
+      - name: Gerar narração brasileira
+        run: node scripts/generate-camera-audio.mjs
+      - name: Renderizar MP4 vertical
+        run: npx remotion render src/index.ts CameraFofoqueira out/camera-fofoqueira.mp4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: camera-fofoqueira-mp4
+          path: out/camera-fofoqueira.mp4
+          if-no-files-found: error
+          retention-days: 7
