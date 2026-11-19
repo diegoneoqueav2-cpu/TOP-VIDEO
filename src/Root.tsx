@@ -5,6 +5,7 @@ import { MotionDemo } from "./MotionDemo";
 import { CowStory } from "./CowStory";
 import { EditedVideo } from "./EditedVideo";
 import { CameraFofoqueira } from "./CameraFofoqueira";
+import { ProfessorSpecs } from "./ProfessorSpecs";
 
 type EditedVideoProps = {
   durationInFrames: number;
@@ -33,6 +34,7 @@ export const Root: React.FC = () => {
       />
       <Composition id="CameraFofoqueira" component={CameraFofoqueira} durationInFrames={810} fps={30} width={1080} height={1920} />
       <Composition id="CowStory" component={CowStory} durationInFrames={360} fps={30} width={1080} height={1920} />
+      <Composition id="ProfessorSpecs" component={ProfessorSpecs} durationInFrames={270} fps={30} width={1080} height={1920} />
       <Composition
         id="MotionDemo"
         component={MotionDemo}
