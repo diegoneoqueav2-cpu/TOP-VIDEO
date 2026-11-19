@@ -7,18 +7,18 @@ const Green="#42c978", Dark="#10291f", Cream="#fff8e9";
 
 const Presenter:React.FC<{compact?:boolean; talking?:boolean}> = ({compact=false,talking=true})=>{
  const f=useCurrentFrame(); const mouth=talking?(Math.sin(f*1.15)>0.15?8:0):0;
- return <div style={{width:compact?250:390,height:compact?350:540,position:"relative",transform:compact?"scale(.78)":"none",transformOrigin:"bottom center"}}>
-  <svg viewBox="0 0 390 540" width="100%" height="100%" style={{overflow:"visible"}}>
+ return <div style={{width:compact?250:390,height:compact?350:540,position:"relative",transform:compact?"perspective(900px) rotateY(-7deg) scale(.78)":"perspective(900px) rotateY(-5deg)",transformOrigin:"bottom center",filter:"drop-shadow(0 24px 18px #0007)"}}>
+  <svg viewBox="0 0 390 540" width="100%" height="100%" style={{overflow:"visible",filter:"drop-shadow(0 12px 10px #0005)"}}><defs><linearGradient id="skin3d" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#ffe0bd"/><stop offset="48%" stopColor="#e8b18c"/><stop offset="100%" stopColor="#a86650"/></linearGradient><linearGradient id="shirt3d" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#64e69b"/><stop offset="45%" stopColor="#238d55"/><stop offset="100%" stopColor="#10472e"/></linearGradient><linearGradient id="hair3d" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#765044"/><stop offset="55%" stopColor="#4b3027"/><stop offset="100%" stopColor="#1c1412"/></linearGradient></defs>
    <ellipse cx="195" cy="515" rx="105" ry="15" fill="#07170f" opacity=".2"/>
-   <path d="M100 505 Q95 410 125 355 L265 355 Q295 420 290 505Z" fill="#238d55" stroke={Dark} strokeWidth="9"/>
+   <path d="M100 505 Q95 410 125 355 L265 355 Q295 420 290 505Z" fill="url(#shirt3d)" stroke={Dark} strokeWidth="9"/>
    <path d="M150 360 L195 420 L240 360" fill="#f4f0df" stroke={Dark} strokeWidth="7"/>
    <path d="M175 421 L195 449 L215 421" fill="none" stroke={Dark} strokeWidth="6"/>
    <path d="M125 385 Q65 390 48 455" fill="none" stroke={Dark} strokeWidth="23" strokeLinecap="round"/>
    <path d="M265 385 Q318 372 337 320" fill="none" stroke={Dark} strokeWidth="23" strokeLinecap="round"/>
    <circle cx="338" cy="313" r="17" fill="#d99a73" stroke={Dark} strokeWidth="7"/>
-   <path d="M117 185 Q108 62 194 52 Q282 53 277 190 L267 302 Q240 358 195 360 Q142 353 120 300Z" fill="#4b3027" stroke={Dark} strokeWidth="9"/>
-   <ellipse cx="195" cy="221" rx="102" ry="119" fill="#e8b18c" stroke={Dark} strokeWidth="9"/>
-   <path d="M98 197 Q88 80 190 70 Q272 65 291 158 Q246 113 211 123 Q154 139 98 197Z" fill="#4b3027"/>
+   <path d="M117 185 Q108 62 194 52 Q282 53 277 190 L267 302 Q240 358 195 360 Q142 353 120 300Z" fill="url(#hair3d)" stroke={Dark} strokeWidth="9"/>
+   <ellipse cx="195" cy="221" rx="102" ry="119" fill="url(#skin3d)" stroke={Dark} strokeWidth="9"/>
+   <path d="M98 197 Q88 80 190 70 Q272 65 291 158 Q246 113 211 123 Q154 139 98 197Z" fill="url(#hair3d)"/>
    <path d="M135 210 Q155 194 174 208 M216 208 Q239 192 256 209" fill="none" stroke={Dark} strokeWidth="9" strokeLinecap="round"/>
    <ellipse cx="158" cy="229" rx="9" ry="14" fill={Dark}/><ellipse cx="235" cy="229" rx="9" ry="14" fill={Dark}/>
    <circle cx="161" cy="224" r="3" fill="white"/><circle cx="238" cy="224" r="3" fill="white"/>
@@ -29,7 +29,7 @@ const Presenter:React.FC<{compact?:boolean; talking?:boolean}> = ({compact=false
  </div>
 };
 
-const Camera:React.FC<{scale?:number; led?:boolean}> = ({scale=1,led=true})=><div style={{transform:`scale(${scale})`,transformOrigin:"center",width:220,height:125,position:"relative"}}>
+const Camera:React.FC<{scale?:number; led?:boolean}> = ({scale=1,led=true})=><div style={{transform:`scale(${scale})`,transformOrigin:"center",width:220,height:125,position:"relative",transform:"perspective(700px) rotateY(-8deg) rotateX(3deg)"}}>
  <div style={{position:"absolute",left:25,top:18,width:155,height:78,borderRadius:"25px 18px 18px 25px",background:"linear-gradient(145deg,#f5f7f4,#9ba9a2)",border:"8px solid #263b32",boxShadow:"0 13px 22px #06150d55"}}/>
  <div style={{position:"absolute",left:130,top:32,width:57,height:48,borderRadius:18,background:"#263b32",border:"6px solid #d5ded8"}}/>
  <div style={{position:"absolute",left:143,top:43,width:30,height:27,borderRadius:"50%",background:"#142b38",border:"5px solid #66818a"}}/>
@@ -38,7 +38,7 @@ const Camera:React.FC<{scale?:number; led?:boolean}> = ({scale=1,led=true})=><di
  <div style={{position:"absolute",left:83,top:106,width:34,height:8,borderRadius:8,background:"#263b32"}}/>
  </div>;
 
-const Burglar:React.FC<{scared?:boolean; sleeping?:boolean}> = ({scared=false,sleeping=false})=><div style={{width:270,height:390,position:"relative"}}>
+const Burglar:React.FC<{scared?:boolean; sleeping?:boolean}> = ({scared=false,sleeping=false})=><div style={{width:270,height:390,position:"relative",transform:"perspective(800px) rotateY(-5deg)"}}>
  <svg viewBox="0 0 270 390" width="100%" height="100%">
   <ellipse cx="135" cy="374" rx="95" ry="12" fill="#09180f" opacity=".18"/>
   <path d="M60 365 Q58 255 86 220 L190 220 Q217 270 211 365Z" fill="#334c48" stroke="#14251e" strokeWidth="9"/>
@@ -74,7 +74,7 @@ const ScenePanel:React.FC<{title:string;sub:string;children:React.ReactNode;pres
  const f=useCurrentFrame(); const {fps}=useVideoConfig();
  const enter=spring({frame:f,fps,config:{damping:16,stiffness:90}});
  return <AbsoluteFill style={{overflow:"hidden",background:"#10291f"}}>
-  <div style={{position:"absolute",inset:0,transform:`scale(${1.04+enter*.035}) translateX(${interpolate(f,[0,18],[35,0],clamp)}px)`}}>{children}</div>
+  <div style={{position:"absolute",inset:0,transform:`perspective(1200px) scale(${1.04+enter*.035}) rotateY(-1.5deg) translateX(${interpolate(f,[0,18],[35,0],clamp)}px)`}}>{children}</div>
   <div style={{position:"absolute",top:68,left:54,right:54,display:"flex",alignItems:"center",gap:15}}>
    <div style={{width:13,height:48,background:Green,borderRadius:12}}/>
    <div style={{fontSize:25,fontWeight:900,letterSpacing:3,color:"white"}}>CÂMERA FOFOQUEIRA</div>
