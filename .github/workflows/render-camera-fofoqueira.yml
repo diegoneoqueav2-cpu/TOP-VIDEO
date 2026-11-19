@@ -1,4 +1,5 @@
 name: Renderizar Camera Fofoqueira MP4
+# Render atualizado para a versão 3D estilizada.
 on:
   push:
     branches: [main]
